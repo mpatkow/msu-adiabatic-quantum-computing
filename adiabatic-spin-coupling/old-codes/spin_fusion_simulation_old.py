@@ -1,3 +1,7 @@
+# Depricated code to simulate AQC alg. on classical computer
+# Uses trotterized time-ev. with user-friendly input to run 
+# a shot on a classical computer
+
 import numpy as np
 import scipy
 from matplotlib import pyplot as plt

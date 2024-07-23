@@ -1,3 +1,8 @@
+# Basic code for simulating the adiabatic evolution of a Heisenberg chain. 
+# Uses sparse matricies.
+# Unfriendly user interface thus depricated in favor of trotterization codes.
+
+
 import numpy as np
 import scipy
 from matplotlib import pyplot as plt

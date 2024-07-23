@@ -1,3 +1,6 @@
+# As of July 22, 2024, most recent code for simulating AQC on qiskit QCs.
+# Uses a trotterization, and able to provide <E> after simulating.
+
 from qiskit import QuantumCircuit
 import sys
 from qiskit.primitives import BackendSampler as BackendSampler

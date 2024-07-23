@@ -1,3 +1,6 @@
+# Code for generating the hamiltonian of Quantum Heisenberg chain
+# Uses sparse matricies and a recursive method to achieve optimal runtime
+
 import numpy as np
 import scipy
 

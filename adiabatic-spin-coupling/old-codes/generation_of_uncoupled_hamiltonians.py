@@ -1,3 +1,8 @@
+# Code for testing the generation of complete hamitlonians for spin fusion method
+# Generates both the final hamiltonian --- fully coupled and
+# the initial hamiltionian --- constructed of uncoupled chains of 2 qubits/sites.
+# No actual application, thus depricated
+
 import numpy as np
 import scipy
 from matplotlib import pyplot as plt
@@ -41,7 +46,7 @@ if __name__ == "__main__":
     import scipy
     from qiskit.quantum_info import SparsePauliOp, Operator
     J = [-1,0,0]
-    h =0.5 
+    h = 0.5 
     gened_hams = generate_initial_and_final_hamiltonians([2,2,2], J, h)
     #gened_hams = generate_initial_and_final_hamiltonians([2,2,2,2], [0,0,-1], 5)
     #gened_hams = spin_chain_improved.connected_chain_hamiltonian(9, [-1,0,0], 4)

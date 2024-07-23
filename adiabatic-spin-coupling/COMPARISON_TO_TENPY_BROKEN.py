@@ -1,3 +1,5 @@
+# WIP code implementing AQC simulation modified to easily verify if tenpy code is working.
+
 import numpy as np
 import scipy
 from matplotlib import pyplot as plt
@@ -34,6 +36,8 @@ def overlap_squared(u,v):
     return abs(u.conj() @ v)**2
 
 def run(SHAPE, TOTAL_TIME, TROTTER_STEPS, D_TIME, CONSTANT_H, J, SHOW_PLOT, INTERPOLATION_TYPE):
+    print(SHAPE, TOTAL_TIME, TROTTER_STEPS, D_TIME, CONSTANT_H, J, SHOW_PLOT, INTERPOLATION_TYPE)
+
     if TROTTER_STEPS != 0:
         D_TIME = TOTAL_TIME/TROTTER_STEPS
     else:
@@ -79,16 +83,34 @@ def run(SHAPE, TOTAL_TIME, TROTTER_STEPS, D_TIME, CONSTANT_H, J, SHOW_PLOT, INTE
             mc_mag = interpolated_matrix_special(mi_mag,mf_mag,s)
             mc_int = interpolated_matrix_special(mi_int,mf_int,s)
 
-        current_state = scipy.sparse.linalg.expm_multiply((-1j)*mc_int*D_TIME,current_state)
-        current_state = scipy.sparse.linalg.expm_multiply((-1j)*mc_mag*D_TIME,current_state)
+        current_state = scipy.sparse.linalg.expm_multiply((-1j)*(mc_int+mc_mag)*D_TIME,current_state)
+        #current_state = scipy.sparse.linalg.expm_multiply((-1j)*mc_mag*D_TIME,current_state)
 
         ev_record.append(scipy.sparse.linalg.eigsh(mc_mag+mc_int)[0])
         s_record.append(s)
 
     current_state = current_state.transpose().toarray()[0]
-    mf = spin_chain_improved.recursive_hamiltonian_sparse(sum(SHAPE), J, CONSTANT_H) 
+    mf = spin_chain_improved.connected_chain_hamiltonian(sum(SHAPE), J, CONSTANT_H) 
 
-    e_exp = np.inner(np.conj(current_state).T, np.matmul(mf.toarray(),current_state)).real
+    e_exp = float(np.inner(np.conj(current_state).T, np.matmul(mf,current_state)).real)
+    print(f"e_exp {e_exp}")
+
+    # TODO, SHOULD CHANGE INDEX TO 1 TO BE SECOND SMALLEST EIGENVECTOR!!
+    the_eigsh_of_final = scipy.sparse.linalg.eigsh(generated_hamiltonians_full[1])
+    eigenvalues_sorted = sorted(the_eigsh_of_final[0])
+    second_smallest_eigenvalue = eigenvalues_sorted[3]
+    print(eigenvalues_sorted)
+    #print(second_smallest_eigenvalue)
+    second_smallest_eigenvalue_index = np.where(the_eigsh_of_final[0] == second_smallest_eigenvalue)[0][0]
+    #print(second_smallest_eigenvalue_index)
+
+    #print(the_eigsh_of_final[0][second_smallest_eigenvalue_index])
+
+    second_smallest_eigenvector = the_eigsh_of_final[1][:,second_smallest_eigenvalue_index]
+    #print(f"by new code: {second_smallest_eigenvalue_index}")
+    ##print(second_smallest_eigenvector)
+    #print(minimal_eigenvector(mf))
+    #print("break")
 
     if len(ev_record) < 1:
         ev_record = [[-1,-1,-1]]
@@ -106,13 +128,15 @@ def run(SHAPE, TOTAL_TIME, TROTTER_STEPS, D_TIME, CONSTANT_H, J, SHOW_PLOT, INTE
                 plt.scatter(s_record[i], ev_record[i][j])
         plt.show()
 
+    print(minimal_eigenvector(mf))
     g_state_overlap = overlap_squared(minimal_eigenvector(mf), current_state)
+    e1_state_overlap = overlap_squared(second_smallest_eigenvector, current_state)
 
-    return e_exp, ground_state_energy, g_state_overlap, energies
+    return e_exp, ground_state_energy, g_state_overlap, energies, e1_state_overlap
 
 if __name__ == "__main__":
     TOTAL_TIME = 1
-    TROTTER_STEPS = 5
+    TROTTER_STEPS = 10
     D_TIME = TOTAL_TIME/TROTTER_STEPS
     CONSTANT_H = 1
     J = np.array([-1,0,0])
@@ -120,7 +144,8 @@ if __name__ == "__main__":
     e_values = []
     e0_values = []
     go_values = []
-    LIMITING_DIMENSION = 4
+    e1_values = []
+    LIMITING_DIMENSION = 1
     BEGINNING_CUTOFF = 1
     shape_values = [[2,2],[2,2,2],[2,2,2,2],[2,2,2,2,2],[2,2,2,2,2,2]][:LIMITING_DIMENSION]
     #shape_values = [[4,4],[4,4,4]]
@@ -128,7 +153,8 @@ if __name__ == "__main__":
     #shape_values = [[3,3],[3,3,3],[3,3,3,3],[3,3,3,3,3],[3,3,3,3,3,3]][:LIMITING_DIMENSION]
     #shape_values = [[8,8]]
     energies_values = []
-    h_values = np.linspace(0,2,20) 
+    #h_values = np.linspace(0,4,40) 
+    h_values = np.linspace(1,1,3) 
     j_coeffs = np.linspace(0,3,20)
     total_runtimes = np.linspace(0,10,30)
     for SHAPE in tqdm(shape_values):
@@ -136,16 +162,19 @@ if __name__ == "__main__":
         e0_values_for_a_run = []
         go_values_for_a_run = []
         energies_values_for_a_run = []
+        e1_values_for_a_run = []
         for TOTAL_TIME in total_runtimes:
             run_res = run(SHAPE, TOTAL_TIME, TROTTER_STEPS, D_TIME, CONSTANT_H, J, SHOW_PLOT, "linear")
             e_values_for_a_run.append(run_res[0])
             e0_values_for_a_run.append(run_res[1])
             go_values_for_a_run.append(run_res[2])
-            energies_values_for_a_run.append(run_res[3][2])
+            energies_values_for_a_run.append(run_res[3][1])
+            e1_values_for_a_run.append(run_res[4])
         e_values.append(e_values_for_a_run)
         e0_values.append(e0_values_for_a_run)
         go_values.append(go_values_for_a_run)
         energies_values.append(energies_values_for_a_run)
+        e1_values.append(e1_values_for_a_run)
 
     trotter_steps_arr = np.linspace(0,len(e_values[0]), len(e_values[0]))
 
@@ -153,36 +182,40 @@ if __name__ == "__main__":
     labels = ["2-2", "2-2-2", "2-2-2-2", "2-2-2-2-2", "2-2-2-2-2-2"][:LIMITING_DIMENSION]
     labels_ground_state = ["2-2 ground", "2-2-2 ground", "2-2-2-2 ground", "2-2-2-2-2 ground", "2-2-2-2-2-2 ground"][:LIMITING_DIMENSION]
     labels_second_state = ["2-2 second", "2-2-2 second", "2-2-2-2 second", "2-2-2-2-2 second", "2-2-2-2-2-2 second"][:LIMITING_DIMENSION]
-    plt.subplot(2, 2, 1)
+    plt.subplot(2, 3, 1)
     colors = ['blue', 'orange', 'green', 'red', 'purple', "brown", "pink", "gray", "olive", "cyan"]
     for i in range(len(e_values)):
         color = colors[i]
         # other option is to use trotter_steps_arr for x axis values
-        plt.plot(total_runtimes[BEGINNING_CUTOFF:], e_values[i][BEGINNING_CUTOFF:], label = labels[i], color = color)
-        plt.plot(total_runtimes[BEGINNING_CUTOFF:], e0_values[i][BEGINNING_CUTOFF:],  color = color, linewidth=0.75, linestyle="dashed")
-        plt.plot(total_runtimes[BEGINNING_CUTOFF:], energies_values[i][BEGINNING_CUTOFF:],  color = color, linewidth=0.75, linestyle="dashed")
+        plt.scatter(total_runtimes[BEGINNING_CUTOFF:], e_values[i][BEGINNING_CUTOFF:], label = labels[i], color = color)
+        plt.scatter(total_runtimes[BEGINNING_CUTOFF:], e0_values[i][BEGINNING_CUTOFF:],  color = color, linewidth=0.75, linestyle="dashed")
+        print(np.subtract(energies_values[i],e0_values[i]))
+        plt.scatter(total_runtimes[BEGINNING_CUTOFF:], energies_values[i][BEGINNING_CUTOFF:],  color = color, linewidth=0.75, linestyle="dashed")
         #plt.plot(np.linspace(0,len(e_values[0]), len(e_values[0])), e0_values[i], label = labels_ground_state[i], color = color, linewidth=0.75, linestyle="dashed")
         #plt.plot(np.linspace(0,len(e_values[0]), len(e_values[0])), energies_values[i], label = labels_second_state[i], color = color, linewidth=0.75, linestyle="dashed")
-    #plt.xlabel(r"Trotter Steps")
+    plt.xlabel(r"Trotter Steps")
     #plt.xlabel(r"Magnetic field $h$")
     #plt.xlabel(r"Coupling coefficient $j$")
-    plt.xlabel(r"Total Runtime $T$")
+    #plt.xlabel(r"Total Runtime $T$")
     plt.ylabel(r"Energy Expectation Value $\langle \phi | \hat H | \phi \rangle$")
     plt.legend()
 
     # Plotting the Overlap
-    plt.subplot(2,2,2)
+    plt.subplot(2,3,2)
     for i in range(len(e_values)):
         color = colors[i]
-        plt.plot(total_runtimes[BEGINNING_CUTOFF:], go_values[i][BEGINNING_CUTOFF:], label = labels[i], color = color)
-    #plt.xlabel(r"Trotter Steps")
+        yvalues = go_values[i]
+        #yvalues = np.divide(np.ones(len(yvalues)), yvalues)
+        plt.plot(total_runtimes[BEGINNING_CUTOFF:], yvalues[BEGINNING_CUTOFF:], label = labels[i], color = color)
+        #plt.plot(h_values[BEGINNING_CUTOFF:], e1_values[i][BEGINNING_CUTOFF:], label = labels[i], color = color)
+    plt.xlabel(r"Trotter Steps")
     #plt.xlabel(r"Magnetic field $h$")
     #plt.xlabel(r"Coupling coefficient $j$")
-    plt.xlabel(r"Total Runtime $T$")
+    #plt.xlabel(r"Total Runtime $T$")
     plt.ylabel(r"Fidelity (Ground State Overlap) $|\langle \phi | \psi_0 \rangle|^2$")
     plt.legend()
 
-    plt.subplot(2,2,3)
+    plt.subplot(2,3,3)
     for i in range(len(e_values)):
         color = colors[i]
         yvalues = []
@@ -190,21 +223,54 @@ if __name__ == "__main__":
             evalue = e_values[i][j]
             e0value = e0_values[i][j]
             yvalues.append(np.abs((evalue-e0value)/e0value))
+        
+        #yvalues = np.divide(np.ones(len(yvalues)), yvalues)
+
         plt.plot(total_runtimes[BEGINNING_CUTOFF:], yvalues[BEGINNING_CUTOFF:], color = colors[i], label = labels[i])
-    #plt.xlabel(r"Trotter Steps")
+    plt.xlabel(r"Trotter Steps")
     #plt.xlabel(r"Magnetic field $h$")
     #plt.xlabel(r"Coupling coefficient $j$")
-    plt.xlabel(r"Total Runtime $T$")
+    #plt.xlabel(r"Total Runtime $T$")
     plt.ylabel(r"Absolute Relative Energy Error $|r| = \left|(\langle E \rangle - E_0)/ E_0\right|$")
     plt.legend()
 
-    plt.subplot(2,2,4)
+    plt.subplot(2,3,4)
     for i in range(len(e_values)):
         plt.scatter(np.subtract(energies_values[i], e0_values[i])[BEGINNING_CUTOFF:], go_values[i][BEGINNING_CUTOFF:], color=colors[i], label = labels[i])
 
     plt.xlabel(r"Minimum Energy Difference $\Delta E = E_1 - E_0 $")
     plt.ylabel(r"Fidelity (Ground State Overlap) $|\langle \phi | \psi_0 \rangle|^2$")
     plt.legend()
+
+    plt.subplot(2,3,5)
+    #for i in range(len(e_values)):
+    #    x_values_to_plot = np.subtract(energies_values[i], e0_values[i])
+    #    plt.scatter(x_values_to_plot, 2*(h_values-np.abs(J[0])), color = colors[i], label = labels[i])
+    #    smallest_v = x_values_to_plot[0]
+    #    largest_v = x_values_to_plot[-1]
+    #plt.plot(np.linspace(smallest_v, largest_v, 20), np.linspace(smallest_v, largest_v, 20), label = "x=y", color="black")
+    plt.xlabel(r"Energy gap: $E_1^- - E_0$")
+    plt.ylabel(r"Approximation: $2(h-|J|)$")
+    plt.legend()
+
+
+    # Plotting the Overlap
+    plt.subplot(2,3,6)
+    for i in range(len(e_values)):
+        color = colors[i]
+        yvalues = go_values[i]
+        #yvalues = np.divide(np.ones(len(yvalues)), yvalues)
+        #plt.plot(h_values[BEGINNING_CUTOFF:], yvalues[BEGINNING_CUTOFF:], label = labels[i], color = color)
+        plt.plot(total_runtimes[BEGINNING_CUTOFF:], e1_values[i][BEGINNING_CUTOFF:], label = labels[i], color = color)
+    plt.xlabel(r"Trotter Steps")
+    #plt.xlabel(r"Magnetic field $h$")
+    #plt.xlabel(r"Coupling coefficient $j$")
+    #plt.xlabel(r"Total Runtime $T$")
+    plt.ylabel(r"First Excited Fidelity $|\langle \phi | \psi_1 \rangle|^2$")
+    plt.legend()
+
+
+
     plt.show()
 
 """
