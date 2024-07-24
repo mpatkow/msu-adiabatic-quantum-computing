@@ -149,8 +149,8 @@ if __name__ == "__main__":
     e0_values = []
     go_values = []
     e1_values = []
-    MIN_LIMITING_DIMENSION = 0
-    LIMITING_DIMENSION = 1
+    MIN_LIMITING_DIMENSION = 2
+    LIMITING_DIMENSION = 3
     BEGINNING_CUTOFF = 1
     shape_values = [[2,2],[2,2,2],[2,2,2,2],[2,2,2,2,2],[2,2,2,2,2,2]][MIN_LIMITING_DIMENSION:LIMITING_DIMENSION]
     #shape_values = [[4,4],[4,4,4]]
