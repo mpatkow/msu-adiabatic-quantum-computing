@@ -2,6 +2,7 @@
 # Uses a trotterization, and able to provide <E> after simulating.
 
 from qiskit import QuantumCircuit
+from tqdm import tqdm
 import sys
 from qiskit.primitives import BackendSampler as BackendSampler
 from qiskit.primitives import BackendEstimatorV2 as BackendEstimator
@@ -17,7 +18,7 @@ from qiskit.quantum_info import SparsePauliOp
 import numpy as np
 import matplotlib as mpl
 import spin_chain_improved
-import trotterization_exact
+import spin_fusion_simulation
 from qiskit.primitives import StatevectorEstimator as SEstimator
 from qiskit.result import sampled_expectation_value
 
@@ -162,9 +163,9 @@ def adiabatic_evolution(size, show_circuit, total_time, trotter_steps, J, H, bac
     #qc.x(3)
 
     # Actual adiabatic evolution procedure
-    for s in np.linspace(0,1,trotter_steps):
+    """
+    for s in tqdm(np.linspace(0,1,trotter_steps)):
         # TODO
-        """TODO"""
         # Figure out why we need to include the -1 coefficient in from of the J
         # This might be due to a typo in the paper that presented the N gate?
         #full_N(qc, [0,1], -1*np.array(J), dt)
@@ -179,13 +180,14 @@ def adiabatic_evolution(size, show_circuit, total_time, trotter_steps, J, H, bac
                     print(i,i+1)
                 except:
                     full_N(qc, [i,0], -1*s*np.array(J), dt)
-                    print("errored")
-                    print(i,0)
+                    #print("errored")
+                    #print(i,0)
 
 
         # Magnetically evolve all qubits
         for bit_num in range(size):
             magnetic_ev(qc, bit_num, H, dt)
+    """
 
     if show_circuit:
         qc.draw(output="mpl")
@@ -194,6 +196,7 @@ def adiabatic_evolution(size, show_circuit, total_time, trotter_steps, J, H, bac
 
     # Transpilation
     pm = generate_preset_pass_manager(optimization_level=1, backend=backend)
+
     isa_circuit = pm.run(qc)
 
     isa_observables = final_hamiltonian.apply_layout(isa_circuit.layout)
@@ -203,13 +206,15 @@ def adiabatic_evolution(size, show_circuit, total_time, trotter_steps, J, H, bac
 
     
     # calculate [ <psi|hamiltonian|psi> ]
+    print("Running!")
     job = estimator.run([(isa_circuit, isa_observables)])
 
+    print(job.result())
     pub_result = job.result()[0]
     return pub_result.data.evs
 
 if __name__ == "__main__":
-    SIZE = 26 # Number of qubits
+    SIZE = 70 # Number of qubits
     SHOW_CIRCUIT = False
     TOTAL_TIME = 1      
     TROTTER_STEPS = 5
@@ -222,7 +227,8 @@ if __name__ == "__main__":
     #BACKEND = service.least_busy(operational=True, simulator=False, min_num_qubits=10)
     #BACKEND = FakeAlmadenV2()
     #BACKEND = FakeLagosV2()
-    BACKEND = AerSimulator() # gives no noise, only statistical error associated with making measurements on quantum states.
+    #BACKEND = AerSimulator() # gives no noise, only statistical error associated with making measurements on quantum states.
+    BACKEND = AerSimulator(method='matrix_product_state') # gives no noise, only statistical error associated with making measurements on quantum states.
 
     energy_expectation_value = adiabatic_evolution(SIZE, SHOW_CIRCUIT, TOTAL_TIME, TROTTER_STEPS, J_MAG, CONSTANT_H, BACKEND, SHOTS)
     print(f"Calculated <E> on {BACKEND}: {energy_expectation_value}")

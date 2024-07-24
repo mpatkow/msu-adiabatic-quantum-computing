@@ -15,22 +15,18 @@ from tenpy.networks.site import SpinSite
 from tenpy.models.lattice import Chain, Square
 from tenpy.models.model import CouplingModel, NearestNeighborModel, MPOModel
 
-#tenpy.tools.misc.setup_logging(to_stdout="INFO")
-
-
-
-
-
+# tenpy.tools.misc.setup_logging(to_stdout="INFO")
 # Alternating XY as controlled reversal gate
 
 
 # pauli x on even pauli y on odd - > Controlled reversal gate 
 
-L = 10
-h = 1
-TOTAL_TIME = 8
+L = 60
+h = 0.2
+TOTAL_TIME = 1000
 J = -1
 c_arr = np.ones(L-1,dtype=float)
+#c_arr[L//2 - 1] = 0
 for coupling_index in range(L//2-1):
     c_arr[coupling_index*2 + 1] = 0
 
@@ -84,6 +80,7 @@ class MyTimeDepModel(TFIChain):
         c_arr = np.ones(L-1)
         for coupling_index in range(L//2-1):
             c_arr[coupling_index*2 + 1] = model_params.get('time', 0)/TOTAL_TIME
+        #c_arr[L//2 -1] =model_params.get('time', 0)/TOTAL_TIME
         #c_arr[3] = model_params.get('time', 0)/TOTAL_TIME
         #c_arr[5] = model_params.get('time', 0)/TOTAL_TIME
         #c_arr[7] = model_params.get('time', 0)/TOTAL_TIME
@@ -188,7 +185,7 @@ print("DMRG step finished")
 
 tebd_params = {
     'N_steps': 1,
-    'dt': 0.5,
+    'dt': 1,
     'order': 4,
     'trunc_params': {'chi_max': 100, 'svd_min': 1.e-12}
 }
@@ -216,8 +213,8 @@ def measurement(eng, data):
 
 data = measurement(eng, None)
 
-
-while eng.evolved_time < TOTAL_TIME:
+# NOT RUNNING FOR FULL TIME SINCE IT JUST OSCILLATES AFTER
+while eng.evolved_time < TOTAL_TIME/10:
     print(f"{eng.evolved_time/TOTAL_TIME * 100}% complete")
     eng.run()
     
