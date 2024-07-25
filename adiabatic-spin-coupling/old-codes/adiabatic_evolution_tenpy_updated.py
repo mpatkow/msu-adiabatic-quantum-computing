@@ -2,10 +2,11 @@
 
 import numpy as np
 import scipy
-import tenpy
 import matplotlib.pyplot as plt
-
+import tenpy
+import tenpy.linalg.np_conserved as npc
 from tenpy.algorithms import dmrg
+from tenpy.networks.mps import MPS
 from tenpy.models.tf_ising import TFIChain, TFIModel
 from tenpy.algorithms import tebd
 from tenpy.models.model import CouplingMPOModel
@@ -14,32 +15,18 @@ from tenpy.networks.site import SpinSite
 from tenpy.models.lattice import Chain, Square
 from tenpy.models.model import CouplingModel, NearestNeighborModel, MPOModel
 
-L = 32
-h = 0.5
-TOTAL_TIME = 3
+# tenpy.tools.misc.setup_logging(to_stdout="INFO")
+# Alternating XY as controlled reversal gate
+
+
+# pauli x on even pauli y on odd - > Controlled reversal gate 
+
+L = 60
+h = 0.2
+TOTAL_TIME = 1000
 J = -1
-SHAPE = [2]*16
-if sum(SHAPE) != L: sys.exit("Incorrect dimensions entered")
 c_arr = np.ones(L-1,dtype=float)
-for non_interacting_index in get_non_interaction_term_indicies(c_arr):
-    c_arr[non_interacting_index] = 0
-    
-
-def get_non_interaction_term_indicies(initial_state):
-    indicies = []
-
-    i = -1
-    for block_length in initial_state:
-        i+=block_length
-        indicies.append(i)
-
-    return indicies[:-1]
-
-print(get_non_interaction_term_indicies([4,4]))
-
-#c_arr[3] = 0
-#c_arr[7] = 0
-#c_arr[11] = 0
+#c_arr[L//2 - 1] = 0
 for coupling_index in range(L//2-1):
     c_arr[coupling_index*2 + 1] = 0
 
@@ -80,7 +67,7 @@ model_params_2 = {
     'J': -1.,
     'g': h,
     'L': L,
-    #'bc_MPS': 'finite',
+    'bc_MPS': 'finite',
     #'bc_x' : 'periodic'
 }
 
@@ -93,10 +80,7 @@ class MyTimeDepModel(TFIChain):
         c_arr = np.ones(L-1)
         for coupling_index in range(L//2-1):
             c_arr[coupling_index*2 + 1] = model_params.get('time', 0)/TOTAL_TIME
-        #c_arr[3] = model_params.get('time', 0)/TOTAL_TIME
-        #c_arr[7] = model_params.get('time', 0)/TOTAL_TIME
-        #c_arr[11] = model_params.get('time', 0)/TOTAL_TIME
-        #c_arr[3] = model_params.get('time', 0)/TOTAL_TIME
+        #c_arr[L//2 -1] =model_params.get('time', 0)/TOTAL_TIME
         #c_arr[3] = model_params.get('time', 0)/TOTAL_TIME
         #c_arr[5] = model_params.get('time', 0)/TOTAL_TIME
         #c_arr[7] = model_params.get('time', 0)/TOTAL_TIME
@@ -175,7 +159,7 @@ M_full = TFIChain(model_params_2)
 #    M.add_coupling(-1, u1, 'Sx', u2, 'Sx', dx)
 #M.init_H_from_terms()
 
-psi_guess = tenpy.networks.mps.MPS.from_lat_product_state(M.lat, [['up']])
+psi_guess = MPS.from_lat_product_state(M.lat, [['up']])
 
 dmrg_params = {
     'mixer': None,  # setting this to True helps to escape local minima
@@ -229,8 +213,8 @@ def measurement(eng, data):
 
 data = measurement(eng, None)
 
-
-while eng.evolved_time < TOTAL_TIME:
+# NOT RUNNING FOR FULL TIME SINCE IT JUST OSCILLATES AFTER
+while eng.evolved_time < TOTAL_TIME/10:
     print(f"{eng.evolved_time/TOTAL_TIME * 100}% complete")
     eng.run()
     
@@ -239,19 +223,6 @@ while eng.evolved_time < TOTAL_TIME:
     #M.init_terms(model_params)
     M.init_H_from_terms()
     M.update_time_parameter(eng.evolved_time)
-
-# Calculate the estimated cost. That is 1/overlap * adiabatic_time
-estimated_cost_adiabatic_rodeo = data['t'][-1] * 1/data['overlap'][-1]
-print(f"Estimated cost for applying rodeo after a single [2]*n -> [2n] adiabatic fusion: {estimated_cost_adiabatic_rodeo}")
-
-# Calculate the estimated cost for only rodeo. That is 1/(overlap (t=0))
-estimated_cost_rodeo_only = 1/data['overlap'][0]
-print(f"Estimated cost for applying rodeo to initial state of [2]*n: {estimated_cost_rodeo_only}")
-
-
-
-
-
 
 plt.subplot(1,2,1)
 plt.plot(data['t'], data['overlap'])
@@ -265,6 +236,4 @@ plt.hlines(E, plt.xlim()[0], plt.xlim()[1],color="black",linestyle="dashed")
 plt.hlines(E2, plt.xlim()[0], plt.xlim()[1],color="black",linestyle="dashed")
 plt.xlabel(r"Evolution time $t$")
 plt.ylabel(r"Energy Expectation Value $\langle \psi | H_f |\psi \rangle$")
-
-
 plt.show()
