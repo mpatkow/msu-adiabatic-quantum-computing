@@ -4,27 +4,10 @@ import numpy as np
 import scipy
 import tenpy
 import matplotlib.pyplot as plt
+from tenpy.algorithms import dmrg, tebd
+from tenpy.models.tf_ising import TFIChain
 
-from tenpy.algorithms import dmrg
-from tenpy.models.tf_ising import TFIChain, TFIModel
-from tenpy.algorithms import tebd
-from tenpy.models.model import CouplingMPOModel
-from tenpy.models.spins import SpinModel, SpinChain
-from tenpy.networks.site import SpinSite
-from tenpy.models.lattice import Chain, Square
-from tenpy.models.model import CouplingModel, NearestNeighborModel, MPOModel
-
-L = 32
-h = 0.5
-TOTAL_TIME = 3
-J = -1
-SHAPE = [2]*16
-if sum(SHAPE) != L: sys.exit("Incorrect dimensions entered")
-c_arr = np.ones(L-1,dtype=float)
-for non_interacting_index in get_non_interaction_term_indicies(c_arr):
-    c_arr[non_interacting_index] = 0
-    
-
+# Return bound indicies that do not have an interaction initially, based on original chain.
 def get_non_interaction_term_indicies(initial_state):
     indicies = []
 
@@ -35,236 +18,167 @@ def get_non_interaction_term_indicies(initial_state):
 
     return indicies[:-1]
 
-print(get_non_interaction_term_indicies([4,4]))
-
-#c_arr[3] = 0
-#c_arr[7] = 0
-#c_arr[11] = 0
-for coupling_index in range(L//2-1):
-    c_arr[coupling_index*2 + 1] = 0
-
-model_params = {
-    'J': J*c_arr,
-    'g': h,
-    'L': L,
-    #'bc_MPS': 'periodic',
-    #'bc_x' : 'periodic'
-}
-
-c_arr_square = np.ones((L-1,L-1))
-model_params_square = {
-    'J': J,
-    'g': h,
-    'Lx': L,
-    'Ly': L,
-    #'bc_MPS': 'periodic',
-    #'bc_x' : 'periodic'
-}
-
-model_params_spin_chain = {
-    'bc_MPS': 'finite',
-    'Jx': -J,
-    'Jy': 0,
-    'Jz': 0,
-    'hx': 0,
-    'hy': 0,
-    'hz': h,
-    'L': L,
-    'S': 1/2,
-    'muJ': 0,
-    "D": 0,
-    "E": 0,
-}
-
-model_params_2 = {
-    'J': -1.,
-    'g': h,
-    'L': L,
-    #'bc_MPS': 'finite',
-    #'bc_x' : 'periodic'
-}
-
-class TFISquare(TFIModel):
-    default_lattice = Square
-    force_default_lattice = True
-
-class MyTimeDepModel(TFIChain):
+# Model for the transverse ising chain that linearly interpolates the coupling terms based on shape provided
+class AdiabaticHamiltonian(TFIChain):
     def init_terms(self, model_params):
         c_arr = np.ones(L-1)
-        for coupling_index in range(L//2-1):
-            c_arr[coupling_index*2 + 1] = model_params.get('time', 0)/TOTAL_TIME
-        #c_arr[3] = model_params.get('time', 0)/TOTAL_TIME
-        #c_arr[7] = model_params.get('time', 0)/TOTAL_TIME
-        #c_arr[11] = model_params.get('time', 0)/TOTAL_TIME
-        #c_arr[3] = model_params.get('time', 0)/TOTAL_TIME
-        #c_arr[3] = model_params.get('time', 0)/TOTAL_TIME
-        #c_arr[5] = model_params.get('time', 0)/TOTAL_TIME
-        #c_arr[7] = model_params.get('time', 0)/TOTAL_TIME
-        #c_arr[9] = model_params.get('time', 0)/TOTAL_TIME
+        for non_coupling_index in get_non_interaction_term_indicies(SHAPE):
+            c_arr[non_coupling_index] = model_params.get('time', 0)/TOTAL_TIME
 
-
-        model_params['J'] = c_arr * -1 # TODO CHANGE TO UPDATE TO J Value
-
-        #print(self.lat.pairs)
-        #print([type(v) for v in self.lat.pairs['nearest_neighbors'][0]])
-        #self.init_H_from_terms()
-        super().init_terms(model_params)
-
-class MyTimeDepModel2(TFIChain):
-    def init_terms(self, model_params):
-        #J = -(model_params.get("time", 0.)/TOTAL_TIME)
-        #print(J)
-
-        #print(self.lat.pairs)
-        #for u1, u2, dx in self.lat.pairs['nearest_neighbors']:
-        #    self.add_coupling(-1, u1, 'Sx', u2, 'Sx', dx)
-        #self.add_coupling_term(-1, 0, 1, "Sx", "Sx")
-        #self.add_coupling_term(-1, 2, 3, "Sx", "Sx")
-        #self.add_coupling_term(J, 1, 2, "Sx", "Sx")
-        #j..print(self.lat.pairs["nearest_neighbors"])
-        #for u1, u2, dx in self.lat.pairs['nearest_neighbors']:
-        #    self.add_coupling(J, u1, 'Sx', u2, 'Sx', dx)
+        model_params['J'] = c_arr * J 
 
         super().init_terms(model_params)
 
-class XXZChain(CouplingModel, NearestNeighborModel, MPOModel):
-    def __init__(self, L=2, S=0.5, J=1, hz=1):
-        spin = SpinSite(S=S, conserve="Sz")
-        # the lattice defines the geometry
-        lattice = Chain(L, spin, bc="open", bc_MPS="finite")
-        CouplingModel.__init__(self, lattice)
-        # add terms of the Hamiltonian
-        for u1, u2, dx in self.lat.pairs['nearest_neighbors']:
-            self.add_coupling(-1, u1, 'Sx', u2, 'Sx', dx)
-        #self.add_coupling(J, 0, "Sx", 0, "Sx", 1) # Sp_i Sm_{i+1}
-        #self.add_coupling(J, 0, "Sp", 0, "Sm", -1) # Sp_i Sm_{i-1}
-        #self.add_coupling(J, 0, "Sz", 0, "Sz", 1)
-        # (for site dependent prefactors, the strength can be an array)
-        self.add_onsite(-hz, 0, "Sz")
-        # finish initialization
-        # generate MPO for DMRG
-        MPOModel.__init__(self, lattice, self.calc_H_MPO())
-        # generate H_bond for TEBD
-        NearestNeighborModel.__init__(self, lattice, self.calc_H_bond())
-
-
-model_params_3 = {
-    'L': L,
-    'Jx': -1*np.ones(L-1), 'Jy': 0., 'Jz': 0.,
-    'hz': -1,  # random values in [-W, W], shape (L,)
-    'conserve': 'best',
-}
-M = tenpy.models.spins.SpinChain(model_params_3)
-
-
-#M = AdiabaticHamiltonian(model_params)
-#M = SpinChain(model_params)
-M = MyTimeDepModel(model_params)
-#M = TFISquare(model_params_square)
-#M = XXZChain(L=4)
-#M = MyTimeDepModel2(model_params)
-#print(f"Pairs of {M}: {M.lat.pairs}")
-#M = CouplingMPOModel(model_params)
-#M = AdiabaticHamiltonian(model_params)
-#M.init_terms(model_params)
-M_full = TFIChain(model_params_2)
-
-#M.manually_call_init_H = True 
-#for u1, u2, dx in M.lat.pairs['nearest_neighbors']:
-    #print(u1)
-#    M.add_coupling(-1, u1, 'Sx', u2, 'Sx', dx)
-#M.init_H_from_terms()
-
-psi_guess = tenpy.networks.mps.MPS.from_lat_product_state(M.lat, [['up']])
-
-dmrg_params = {
-    'mixer': None,  # setting this to True helps to escape local minima
-    'max_E_err': 1.e-10,
-    'trunc_params': {
-        'chi_max': 100,
-        'svd_min': 1.e-10,
-    },
-    'combine': True,
-}
-eng1 = dmrg.TwoSiteDMRGEngine(psi_guess, M, dmrg_params)
-E, psi_start = eng1.run() # the main work; modifies psi in place
-print(f"Energy of Initial Hamiltonian: {E}")
-
-eng2 = dmrg.TwoSiteDMRGEngine(psi_start.copy(), M_full, dmrg_params)
-E2, psi_actual = eng2.run() # the main work; modifies psi in place
-
-# the ground state energy was directly returned by dmrg.run()
-print("ground state energy = ", E)
-print("ground state energy = ", E2)
-
-print("DMRG step finished")
-
-tebd_params = {
-    'N_steps': 1,
-    'dt': 1,
-    'order': 4,
-    'trunc_params': {'chi_max': 100, 'svd_min': 1.e-12}
-}
-
-#eng = tebd.TEBDEngine(psi_start, M, tebd_params) # TODO should the engine be updated every time?
-eng = tebd.TimeDependentTEBD(psi_start, M, tebd_params) # TODO should the engine be updated every time?
-
-def measurement(eng, data):
-    keys = ['t', 'entropy', 'Sx', 'Sz', 'corr_XX', 'corr_ZZ', 'trunc_err', 'overlap', 'ene_exp']
+# Measure the desired parameters at a time step in the simulation
+def measurement(eng, data, target_state):
+    keys = ['t', 'overlap', 'ene_exp']
     if data is None:
         data = dict([(k, []) for k in keys])
     data['t'].append(eng.evolved_time)
-    #data['entropy'].append(eng.psi.entanglement_entropy())
-    #data['Sx'].append(eng.psi.expectation_value('Sigmax'))
-    #data['Sz'].append(eng.psi.expectation_value('Sigmaz'))
-    #data['corr_XX'].append(eng.psi.correlation_function('Sigmax', 'Sigmax'))
     #data['trunc_err'].append(eng.trunc_err.eps)
-    data['ene_exp'].append(M_full.H_MPO.expectation_value(eng.psi))
-    overlap_unsq = eng.psi.overlap(psi_actual)
-    #print(f"Unsquared Overlap: {overlap_unsq}")
-    #print(f"Overlap: {overlap_unsq.conj()*overlap_unsq}")
+    data['ene_exp'].append(M_f.H_MPO.expectation_value(eng.psi))
+    overlap_unsq = eng.psi.overlap(target_state)
     data['overlap'].append(overlap_unsq.conj()*overlap_unsq)
-    #print(eng.psi.get_B(0))
     return data
 
-data = measurement(eng, None)
+# Run a complete adiabatic evolution (single run) from the initial_model to the final_model
+def complete_adiabatic_evolution_run(initial_model, final_model, dmrg_params, tebd_params, total_time, verbose=True):
+    # Guess for the ground state of the initial_model
+    psi0_i_guess = tenpy.networks.mps.MPS.from_lat_product_state(initial_model.lat, [['up']])
 
+    dmrg_eng_uncoupled_state = dmrg.TwoSiteDMRGEngine(psi0_i_guess, M_i, dmrg_params)
+    E0_uncoupled, psi_start = dmrg_eng_uncoupled_state.run()
 
-while eng.evolved_time < TOTAL_TIME:
-    print(f"{eng.evolved_time/TOTAL_TIME * 100}% complete")
-    eng.run()
+    if verbose:
+        print(f"Ground state of initial model: {E0_uncoupled}")
+
+    dmrg_eng_final_state = dmrg.TwoSiteDMRGEngine(psi_start.copy(), M_f, dmrg_params)
+    E0_coupled, psi_actual = dmrg_eng_final_state.run() 
+
+    if verbose:
+        print(f"Ground state of final model: {E0_coupled}")
+
+    if verbose:
+        print("\nDMRG step finished\n\n======================================================\nTime Evolution Preparation...\n")
+
+    time_evolution_engine = tebd.TimeDependentTEBD(psi_start, M_i, tebd_params) 
+
+    data = measurement(time_evolution_engine, None, psi_actual)
+
+    if verbose:
+        print("Time Evolution Running...")
+
+    while time_evolution_engine.evolved_time < total_time:
+        if verbose:
+            print(f" Time Evolution step is {time_evolution_engine.evolved_time/total_time * 100}% complete.")
+        time_evolution_engine.run()
+        
+        measurement(time_evolution_engine, data, psi_actual)
+
+        M_i.init_H_from_terms()
+        M_i.update_time_parameter(time_evolution_engine.evolved_time)
+
+    return data, [E0_uncoupled, E0_coupled]
+
+if __name__ == "__main__":
+    from tqdm import tqdm
+
+    # Simulation parameters
+    h = 0.5
+    TOTAL_TIME = 10
+    J = -1
+    SHAPE = [2]*2
+    L = sum(SHAPE)
+    total_runtimes = np.linspace(10,10,1)
+    EPSILON_RODEO = 0.1
     
-    measurement(eng, data)
-    #M.add_coupling_term(-tebd_params['dt']/TOTAL_TIME, 1, 2, "Sx", "Sx")
-    #M.init_terms(model_params)
-    M.init_H_from_terms()
-    M.update_time_parameter(eng.evolved_time)
+    M_i = AdiabaticHamiltonian({'J':J,'g':h,"L":L})
+    M_f = TFIChain({'J':J,'g':h,"L":L})
 
-# Calculate the estimated cost. That is 1/overlap * adiabatic_time
-estimated_cost_adiabatic_rodeo = data['t'][-1] * 1/data['overlap'][-1]
-print(f"Estimated cost for applying rodeo after a single [2]*n -> [2n] adiabatic fusion: {estimated_cost_adiabatic_rodeo}")
+    dmrg_params = {
+        'mixer': None,  # setting this to True helps to escape local minima
+        'max_E_err': 1.e-10,
+        'trunc_params': {
+            'chi_max': 100,
+            'svd_min': 1.e-10,
+        },
+        'combine': True,
+    }
 
-# Calculate the estimated cost for only rodeo. That is 1/(overlap (t=0))
-estimated_cost_rodeo_only = 1/data['overlap'][0]
-print(f"Estimated cost for applying rodeo to initial state of [2]*n: {estimated_cost_rodeo_only}")
+    tebd_params = {
+        'N_steps': 1,
+        'dt': 1,
+        'order': 4,
+        'trunc_params': {'chi_max': 100, 'svd_min': 1.e-12}
+    }
+
+    data = {'total_runtimes':total_runtimes, 'overlap_at_end':[], 'estimated_cost_adiabatic_rodeo':[], 'estimated_cost_rodeo_only':[], 'estimated_cost_adiabatic_rodeo_2':[], 'estimated_cost_rodeo_only_2':[]}
+
+    x_plots = []
+    y_plots = []
+    for TOTAL_TIME in tqdm(total_runtimes):
+        run_data, [E,E2] = complete_adiabatic_evolution_run(M_i, M_f, dmrg_params, tebd_params, TOTAL_TIME)
+        plt.plot(run_data['t'], run_data['overlap'])
+        plt.show()
+        x_plots.append(run_data['t'])
+        y_plots.append(run_data['overlap'])
+        data['overlap_at_end'].append(run_data['overlap'][-1])
+
+        # Calculate the estimated cost. That is 1/overlap * adiabatic_time
+        data['estimated_cost_adiabatic_rodeo'].append(run_data['t'][-1] * 1/run_data['overlap'][-1])
+        #print(f"Estimated cost for applying rodeo after a single [2]*n -> [2n] adiabatic fusion: {estimated_cost_adiabatic_rodeo}")
+
+        # Calculate the estimated cost for only rodeo. That is 1/(overlap (t=0))
+        data['estimated_cost_rodeo_only'].append(1/run_data['overlap'][0])
+        #print(f"Estimated cost for applying rodeo to initial state of [2]*n: {estimated_cost_rodeo_only}")
+
+        # Calculate the estimated cost by new method.  
+        a_sq_end = run_data['overlap'][-1]
+        N_rodeo_end = max(1,np.log2(1/EPSILON_RODEO * (1/a_sq_end - 1)))
+        a_sq_start = run_data['overlap'][0]
+        N_rodeo_start = max(1,np.log2(1/EPSILON_RODEO * (1/a_sq_start - 1)))
+        data['estimated_cost_adiabatic_rodeo_2'].append(run_data['t'][-1] * N_rodeo_end/a_sq_end)
+        data['estimated_cost_rodeo_only_2'].append(N_rodeo_start/a_sq_start)
 
 
+    plt.subplot(1,2,1)
+    plt.plot(data['total_runtimes'], data['overlap_at_end'], color="black", linestyle="dashed")
+    #for x_plot,y_plot in zip(x_plots, y_plots):
+    #    plt.plot(x_plot, y_plot)
+    plt.xlabel(r"Total runtime $T$")
+    plt.ylabel(r"Overlap $|\langle \psi _0 | \phi \rangle |^2$")
+    plt.subplot(1,2,2)
+    plt.plot(data['total_runtimes'], np.divide(data['estimated_cost_adiabatic_rodeo'], data['estimated_cost_rodeo_only']), label="original_method")
+    plt.plot(data['total_runtimes'], np.divide(data['estimated_cost_adiabatic_rodeo_2'], data['estimated_cost_rodeo_only_2']), label="including rodeo cycles")
+    plt.legend()
+    plt.xlabel(r"Total runtime $T$")
+    plt.ylabel(r"Adiabatic Rodeo Cost / Rodeo Only Cost")
+    plt.show()
 
 
+    def exp_fit_overlap(x, a, b):
+        return 1-a*np.exp(x*b) 
 
+    x = data['total_runtimes']
+    yn = data['overlap_at_end']
 
-plt.subplot(1,2,1)
-plt.plot(data['t'], data['overlap'])
-plt.xlabel(r"Evolution time $t$")
-plt.ylabel(r"Overlap $|\langle \psi _0 | \phi \rangle |^2$")
-plt.hlines(1, plt.xlim()[0], plt.xlim()[1],color="black",linestyle="dashed")
-plt.ylim(-0.1, 1.1)
-plt.subplot(1,2,2)
-plt.plot(data['t'], data['ene_exp'])
-plt.hlines(E, plt.xlim()[0], plt.xlim()[1],color="black",linestyle="dashed")
-plt.hlines(E2, plt.xlim()[0], plt.xlim()[1],color="black",linestyle="dashed")
-plt.xlabel(r"Evolution time $t$")
-plt.ylabel(r"Energy Expectation Value $\langle \psi | H_f |\psi \rangle$")
+    popt, pcov = scipy.optimize.curve_fit(exp_fit_overlap, x, yn, p0=(5,-0.5))
 
+    plt.plot(x, yn, 'ko', label="Original Noised Data")
+    plt.plot(x, exp_fit_overlap(x, *popt), 'r-', label="Fitted Curve")
+    plt.legend()
+    plt.show()
 
-plt.show()
+    #plt.subplot(1,2,1)
+    #plt.plot(data['t'], data['overlap'])
+    #plt.xlabel(r"Evolution time $t$")
+    #plt.ylabel(r"Overlap $|\langle \psi _0 | \phi \rangle |^2$")
+    #plt.hlines(1, plt.xlim()[0], plt.xlim()[1],color="black",linestyle="dashed")
+    #plt.ylim(-0.1, 1.1)
+    #plt.subplot(1,2,2)
+    #plt.plot(data['t'], data['ene_exp'])
+    #plt.hlines(E, plt.xlim()[0], plt.xlim()[1],color="black",linestyle="dashed")
+    #plt.hlines(E2, plt.xlim()[0], plt.xlim()[1],color="black",linestyle="dashed")
+    #plt.xlabel(r"Evolution time $t$")
+    #plt.ylabel(r"Energy Expectation Value $\langle \psi | H_f |\psi \rangle$")
+    #plt.show()

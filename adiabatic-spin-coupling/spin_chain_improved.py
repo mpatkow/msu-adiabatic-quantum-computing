@@ -145,8 +145,8 @@ if __name__ == "__main__":
     
     #print(recursive_hamiltonian(15,[1,1,1],1))
 
-    hset = connected_chain_hamiltonian(4, [-1,0,0], 1)
-    import trotterization_exact
+    #hset = connected_chain_hamiltonian(4, [-1,0,0], 1)
+    hset = recursive_hamiltonian(10, [-0.1,0,0], 1)
     print(hset)
     evs = scipy.sparse.linalg.eigsh(hset)[0]
     print(evs)
