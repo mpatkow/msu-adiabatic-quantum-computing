@@ -23,6 +23,8 @@ class AdiabaticHamiltonian(TFIChain):
     def init_terms(self, model_params):
         c_arr = np.ones(L-1)
         for non_coupling_index in get_non_interaction_term_indicies(SHAPE):
+            c_arr[non_coupling_index] = 0
+        for non_coupling_index in get_non_interaction_term_indicies(SHAPE_F):
             c_arr[non_coupling_index] = model_params.get('time', 0)/TOTAL_TIME
 
         model_params['J'] = c_arr * J 
@@ -87,13 +89,18 @@ if __name__ == "__main__":
     h = 0.5
     TOTAL_TIME = 10
     J = -1
-    SHAPE = [2]*2
+    SHAPE = [2]*8
+    SHAPE_F = [16]
     L = sum(SHAPE)
-    total_runtimes = np.linspace(10,10,1)
+    total_runtimes = np.linspace(1,10,10)
     EPSILON_RODEO = 0.1
     
     M_i = AdiabaticHamiltonian({'J':J,'g':h,"L":L})
-    M_f = TFIChain({'J':J,'g':h,"L":L})
+
+    c_arr = np.ones(L-1)
+    for non_coupling_index in get_non_interaction_term_indicies(SHAPE_F):
+        c_arr[non_coupling_index] = 0
+    M_f = TFIChain({'J':J*c_arr,'g':h,"L":L})
 
     dmrg_params = {
         'mixer': None,  # setting this to True helps to escape local minima
@@ -118,8 +125,6 @@ if __name__ == "__main__":
     y_plots = []
     for TOTAL_TIME in tqdm(total_runtimes):
         run_data, [E,E2] = complete_adiabatic_evolution_run(M_i, M_f, dmrg_params, tebd_params, TOTAL_TIME)
-        plt.plot(run_data['t'], run_data['overlap'])
-        plt.show()
         x_plots.append(run_data['t'])
         y_plots.append(run_data['overlap'])
         data['overlap_at_end'].append(run_data['overlap'][-1])

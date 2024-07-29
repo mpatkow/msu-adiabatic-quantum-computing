@@ -24,7 +24,7 @@ from qiskit.result import sampled_expectation_value
 
 # Perform an arbitrary unitary operation on two qubits
 # of the form N = exp(i(alpha sx x sx + beta sy x sy + gamma sz x sz) dt)
-def full_N(q_c, bits, J, dt):
+def full_N(q_c,reg, bits, J, dt):
     alpha = J[0]
     beta = J[1]
     gamma = J[2]
@@ -41,14 +41,14 @@ def full_N(q_c, bits, J, dt):
     phi = 2*alpha - np.pi/2
     lambd = np.pi/2 - 2*beta
 
-    q_c.rz(-np.pi/2, b1)
-    q_c.cx(b1, b0)
-    q_c.rz(theta, b0)
-    q_c.ry(phi, b1)
-    q_c.cx(b0, b1)
-    q_c.ry(lambd, b1)
-    q_c.cx(b1, b0)
-    q_c.rz(np.pi/2, b0)
+    q_c.rz(-np.pi/2, reg[b1])
+    q_c.cx(b1, reg[b0])
+    q_c.rz(theta, reg[b0])
+    q_c.ry(phi, reg[b1])
+    q_c.cx(b0, reg[b1])
+    q_c.ry(lambd, reg[b1])
+    q_c.cx(b1, reg[b0])
+    q_c.rz(np.pi/2, reg[b0])
 
 """
 For later use when reducing two two CNOTS 
@@ -97,8 +97,8 @@ final_hamiltonian = SparsePauliOp.from_list(final_hamiltonian_entries)
 #sys.exit()
 
 # Time evolve a given bit for time dt with magnetic field strength h pointing on z axis.
-def magnetic_ev(q_c, bits, h, dt):
-    q_c.rz(2*dt*h,bits)
+def magnetic_ev(q_c,reg, bits, h, dt):
+    q_c.rz(2*dt*h,reg[bits])
 
 # Convert a state (ordered in reverse) to full N^2 state vector
 def convert_to_statevec(state):
@@ -121,8 +121,64 @@ def convert_to_statevec(state):
 def expectation_value(observable, state):
     return state.conj() @ (observable @ state)
 
+def adiabatic_evolution_circuit(size, total_time, trotter_steps, J, H, backend, circuit, reg):
+    dt = total_time/trotter_steps
 
-def adiabatic_evolution(size, show_circuit, total_time, trotter_steps, J, H, backend, shots):
+    #full_final = spin_chain_improved.recursive_hamiltonian_sparse(size, J, H)
+    #full_final = full_final.toarray()
+    #final_hamiltonian = SparsePauliOp.from_operator(Operator(full_final))
+    final_hamiltonian_entries = []
+    for i in range(size):
+        string_of_ops = "I"*i+"Z"+"I"*(size-i-1)
+        if H != 0:
+            final_hamiltonian_entries.append((string_of_ops,-H))
+
+    for i in range(size-1):
+        string_of_ops_X = "I"*i + "XX" + "I"*(size-i-2)
+        string_of_ops_Y = "I"*i + "YY" + "I"*(size-i-2)
+        string_of_ops_Z = "I"*i + "ZZ" + "I"*(size-i-2)
+        if J[0] != 0:
+            final_hamiltonian_entries.append((string_of_ops_X,-J[0]))
+        if J[1] != 0:
+            final_hamiltonian_entries.append((string_of_ops_Y,-J[1]))
+        if J[2] != 0:
+            final_hamiltonian_entries.append((string_of_ops_Z,-J[2]))
+
+    final_hamiltonian_entries.append(("X" + "I"*(size-2) + "X", -J[0]))
+    final_hamiltonian_entries.append(("Y" + "I"*(size-2) + "Y", -J[1]))
+    final_hamiltonian_entries.append(("Z" + "I"*(size-2) + "Z", -J[2]))
+
+    final_hamiltonian = SparsePauliOp.from_list(final_hamiltonian_entries)
+    print(final_hamiltonian)
+
+    # Actual adiabatic evolution procedure
+    for s in tqdm(np.linspace(0,1,trotter_steps)):
+        # TODO
+        # Figure out why we need to include the -1 coefficient in from of the J
+        # This might be due to a typo in the paper that presented the N gate?
+        #full_N(qc, [0,1], -1*np.array(J), dt)
+        #full_N(qc, [1,2], -1*s*np.array(J), dt)
+        #full_N(qc, [2,3], -1*np.array(J), dt)
+        for i in range(size):
+            if i % 2 == 0:
+                full_N(circuit,reg, [i,i+1], -1*np.array(J), dt)
+            else:
+                try:
+                    full_N(circuit,reg, [i,i+1], -1*s*np.array(J), dt)
+                    print(i,i+1)
+                except:
+                    full_N(circuit,reg, [i,0], -1*s*np.array(J), dt)
+                    #print("errored")
+                    #print(i,0)
+
+
+        # Magnetically evolve all qubits
+        for bit_num in range(size):
+            magnetic_ev(circuit,reg, bit_num, H, dt)
+
+
+
+def adiabatic_evolution(size, show_circuit, total_time, trotter_steps, J, H, backend, shots, circuit):
     dt = total_time/trotter_steps
 
     #full_final = spin_chain_improved.recursive_hamiltonian_sparse(size, J, H)
@@ -152,7 +208,6 @@ def adiabatic_evolution(size, show_circuit, total_time, trotter_steps, J, H, bac
     final_hamiltonian = SparsePauliOp.from_list(final_hamiltonian_entries)
     print(final_hamiltonian)
 
-    qc = QuantumCircuit(size,size)
 
 
     # Initial state preparation, default to |0>,
@@ -163,7 +218,6 @@ def adiabatic_evolution(size, show_circuit, total_time, trotter_steps, J, H, bac
     #qc.x(3)
 
     # Actual adiabatic evolution procedure
-    """
     for s in tqdm(np.linspace(0,1,trotter_steps)):
         # TODO
         # Figure out why we need to include the -1 coefficient in from of the J
@@ -187,7 +241,6 @@ def adiabatic_evolution(size, show_circuit, total_time, trotter_steps, J, H, bac
         # Magnetically evolve all qubits
         for bit_num in range(size):
             magnetic_ev(qc, bit_num, H, dt)
-    """
 
     if show_circuit:
         qc.draw(output="mpl")
@@ -214,12 +267,12 @@ def adiabatic_evolution(size, show_circuit, total_time, trotter_steps, J, H, bac
     return pub_result.data.evs
 
 if __name__ == "__main__":
-    SIZE = 70 # Number of qubits
+    SIZE = 4 # Number of qubits
     SHOW_CIRCUIT = False
-    TOTAL_TIME = 1      
-    TROTTER_STEPS = 5
+    TOTAL_TIME = 5
+    TROTTER_STEPS =10
     D_TIME = TOTAL_TIME/TROTTER_STEPS 
-    CONSTANT_H = 2
+    CONSTANT_H = 0.5
     J_MAG = [-1,0,0]
     SHOTS = 2048
 
@@ -230,7 +283,8 @@ if __name__ == "__main__":
     #BACKEND = AerSimulator() # gives no noise, only statistical error associated with making measurements on quantum states.
     BACKEND = AerSimulator(method='matrix_product_state') # gives no noise, only statistical error associated with making measurements on quantum states.
 
-    energy_expectation_value = adiabatic_evolution(SIZE, SHOW_CIRCUIT, TOTAL_TIME, TROTTER_STEPS, J_MAG, CONSTANT_H, BACKEND, SHOTS)
+    qc = QuantumCircuit(SIZE,SIZE)
+    energy_expectation_value = adiabatic_evolution(SIZE, SHOW_CIRCUIT, TOTAL_TIME, TROTTER_STEPS, J_MAG, CONSTANT_H, BACKEND, SHOTS, qc)
     print(f"Calculated <E> on {BACKEND}: {energy_expectation_value}")
 
 

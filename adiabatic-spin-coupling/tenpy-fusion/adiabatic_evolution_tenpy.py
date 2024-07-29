@@ -15,7 +15,6 @@ def get_non_interaction_term_indicies(initial_state):
     for block_length in initial_state:
         i+=block_length
         indicies.append(i)
-
     return indicies[:-1]
 
 # Model for the transverse ising chain that linearly interpolates the coupling terms based on shape provided
@@ -26,6 +25,7 @@ class AdiabaticHamiltonian(TFIChain):
             c_arr[non_coupling_index] = model_params.get('time', 0)/TOTAL_TIME
 
         model_params['J'] = c_arr * J
+        print(model_params['J'])
 
         super().init_terms(model_params)
 
@@ -44,7 +44,7 @@ def measurement(eng, data, target_state, final_model):
 # Run a complete adiabatic evolution (single run) from the initial_model to the final_model
 def complete_adiabatic_evolution_run(initial_model, final_model, dmrg_params, tebd_params, total_time, verbose=True):
     # Guess for the ground state of the initial_model
-    psi0_i_guess = tenpy.networks.mps.MPS.from_lat_product_state(initial_model.lat, [['up']])
+    psi0_i_guess = tenpy.networks.mps.MPS.from_lat_product_state(initial_model.lat, [['down']])
 
     dmrg_eng_uncoupled_state = dmrg.TwoSiteDMRGEngine(psi0_i_guess, initial_model, dmrg_params)
     E0_uncoupled, psi_start = dmrg_eng_uncoupled_state.run()
@@ -90,16 +90,18 @@ if __name__ == "__main__":
     h = 0.5
     TOTAL_TIME = 10
     J = -1
-    SHAPE = [2]*2
+    #SHAPE = [1]*16
+    SHAPE = [8]*2
     L = sum(SHAPE)
-    total_runtimes = [10]
+    total_runtimes = [1,2,3,4,5,6]
     EPSILON_RODEO = 0.1
+    dt = 1
     
     M_i = AdiabaticHamiltonian({'J':J,'g':h,"L":L})
     M_f = TFIChain({'J':J,'g':h,"L":L})
 
     dmrg_params = {
-        'mixer': None,  # setting this to True helps to escape local minima
+        'mixer': True,  # setting this to True helps to escape local minima
         'max_E_err': 1.e-10,
         'trunc_params': {
             'chi_max': 100,
@@ -110,7 +112,7 @@ if __name__ == "__main__":
 
     tebd_params = {
         'N_steps': 1,
-        'dt': 1,
+        'dt': dt,
         'order': 4,
         'trunc_params': {'chi_max': 100, 'svd_min': 1.e-12}
     }
@@ -121,8 +123,8 @@ if __name__ == "__main__":
     y_plots = []
     for TOTAL_TIME in tqdm(total_runtimes):
         run_data = complete_adiabatic_evolution_run(M_i, M_f, dmrg_params, tebd_params, TOTAL_TIME)
-        plt.plot(run_data['t'], run_data['overlap'])
-        plt.show()
+        #plt.plot(run_data['t'], run_data['overlap'])
+        #plt.show()
         x_plots.append(run_data['t'])
         y_plots.append(run_data['overlap'])
         data['overlap_at_end'].append(run_data['overlap'][-1])
