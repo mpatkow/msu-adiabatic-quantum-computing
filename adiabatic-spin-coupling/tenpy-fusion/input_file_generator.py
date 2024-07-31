@@ -1,16 +1,16 @@
 import json
 import numpy as np
 
-h_values = [0.5]
-total_runtime_values = np.linspace(1,30,120)
+h_values = [3]
+total_runtime_values = [0]
 j_values = [-1]
-shape_values = [[2]*2, [2]*4, [2]*8, [2]*16, [2]*32, [4]*2, [4]*4, [4]*8, [4]*16, [8]*2,[8]*4,[8]*8,[16]*2,[16]*4,[32]*2]
+shape_values = [[i] * 2 for i in range(2,50)]
 
 dmrg_default_params = {
     'mixer': None,  # setting this to True helps to escape local minima
     'max_E_err': 1.e-10,
     'trunc_params': {
-        'chi_max': 100,
+        'chi_max': 200,
         'svd_min': 1.e-10,
     },
     'combine': True,
@@ -46,7 +46,9 @@ for shape_value in shape_values:
 
                         i+=1
 
-with open("input_parameters.json", "a") as outfile:
+FILENAME = "input_parameters_2.json"
+
+with open(FILENAME, "a") as outfile:
     json.dump(simulation_params, outfile)
 
 

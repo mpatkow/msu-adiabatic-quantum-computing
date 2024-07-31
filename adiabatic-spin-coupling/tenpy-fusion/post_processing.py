@@ -6,9 +6,13 @@ import os
 data = {}
 #categories = ["e22.","e22222222.","e4444."]
 #categories = ["e22.","e44.","e88.","e2222222222222222.","e44444444."]
-categories = ["e22.","e88.","e44.","e22222222."]
+category_sizes = range(2,10)
+categories = ["e"+str(i)*2+"." for i in category_sizes]
+print(categories)
+#categories = ["e22."]
 #categories = ["e22.","e44.","e88.","e2222222222222222.","e44444444."]
 EPSILON_RODEO = 0.01
+RESULTDIR = "results-2"
 for category in categories:
     data[category] = {}
     category_dataset = data[category]
@@ -19,7 +23,7 @@ for category in categories:
     category_dataset['estimated_cost_adiabatic_rodeo_2'] = []
     category_dataset['estimated_cost_rodeo_only_2'] = []
     filenames_to_analyze = []
-    for filename in os.listdir("results/"):
+    for filename in os.listdir(RESULTDIR +"/"):
         if category not in filename:
             continue
         else:
@@ -31,11 +35,17 @@ for category in categories:
     category_dataset['total_runtimes'].sort()
 
     for filename in filenames_to_analyze:
-        with open("results/"+filename, "r") as file_opened:
+        with open(RESULTDIR+"/"+filename, "r") as file_opened:
             
             raw_data = file_opened.read()
             raw_data = raw_data.replace("array", "np.array")
             run_data = eval(raw_data)
+
+            try:
+                print(run_data['overlap'])
+            except:
+                run_data['t'] = [0]
+                run_data['overlap'] = [0.1]
 
             category_dataset['overlap_at_end'].append(run_data['overlap'][-1].real)
 
@@ -55,10 +65,20 @@ for category in categories:
             category_dataset['estimated_cost_adiabatic_rodeo_2'].append(run_data['t'][-1] * N_rodeo_end/a_sq_end)
             category_dataset['estimated_cost_rodeo_only_2'].append(N_rodeo_start/a_sq_start)
 
+y_values = []
+for category in data.keys():
+    run_dataset = data[category]
+    y_values.append(sorted(run_dataset['overlap_at_end']))
+plt.scatter(category_sizes, y_values)
+plt.xlabel(r"Qubit Number $N \rightarrow 2N$")
+plt.ylabel(r"Overlap $|\langle \phi _0 |\psi _f\rangle |^2$")
+plt.show()
+"""
+
 plt.subplot(1,2,1)
 for category in data.keys():
     run_dataset = data[category]
-    plt.plot(run_dataset['total_runtimes'], sorted(run_dataset['overlap_at_end']), linestyle="dashed", label=category)
+    plt.scatter(run_dataset['total_runtimes'], sorted(run_dataset['overlap_at_end']), linestyle="dashed", label=category)
 plt.legend()
 plt.xlabel(r"Total runtime $T$")
 plt.ylabel(r"Overlap $|\langle \psi _0 | \phi \rangle |^2$")
@@ -66,8 +86,8 @@ plt.ylabel(r"Overlap $|\langle \psi _0 | \phi \rangle |^2$")
 plt.subplot(1,2,2)
 for category in data.keys():
     run_dataset = data[category]
-    plt.plot(run_dataset['total_runtimes'], np.divide(run_dataset['estimated_cost_adiabatic_rodeo'], run_dataset['estimated_cost_rodeo_only']), label=category+"_original_method")
-    plt.plot(run_dataset['total_runtimes'], np.divide(run_dataset['estimated_cost_adiabatic_rodeo_2'], run_dataset['estimated_cost_rodeo_only_2']), label=category+"_including rodeo cycles", linestyle = "dashed")
+    plt.scatter(run_dataset['total_runtimes'], np.divide(run_dataset['estimated_cost_adiabatic_rodeo'], run_dataset['estimated_cost_rodeo_only']), label=category+"_original_method")
+    plt.scatter(run_dataset['total_runtimes'], np.divide(run_dataset['estimated_cost_adiabatic_rodeo_2'], run_dataset['estimated_cost_rodeo_only_2']), label=category+"_including rodeo cycles", linestyle = "dashed")
     #plt.plot(run_dataset['total_runtimes'], run_dataset['estimated_cost_rodeo_only_2'], label=category+"_rodeo_2_cost")
     #plt.plot(run_dataset['total_runtimes'], run_dataset['estimated_cost_adiabatic_rodeo_2'], label=category+"_adiabatic_rodeo_2")
 plt.axhline(1, linestyle='dotted',color="black")
@@ -75,3 +95,4 @@ plt.legend()
 plt.xlabel(r"Total runtime $T$")
 plt.ylabel(r"Adiabatic Rodeo Cost / Rodeo Only Cost")
 plt.show()
+"""

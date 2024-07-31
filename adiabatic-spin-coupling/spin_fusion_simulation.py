@@ -62,6 +62,8 @@ def run(SHAPE, TOTAL_TIME, TROTTER_STEPS, D_TIME, CONSTANT_H, J, SHOW_PLOT, INTE
     current_state_i[0] = 1
     current_state_i = minimal_eigenvector(generated_hamiltonians_full[0])
     current_state_i = np.array(current_state_i)/np.sum(current_state_i.conj() @ current_state_i)
+    print(current_state_i)
+    print("CURRENT STATE ABOVE")
     current_state = scipy.sparse.csc_matrix(current_state_i).transpose()
 
     s_record = []
@@ -146,7 +148,7 @@ if __name__ == "__main__":
     LIMITING_DIMENSION = 2
     BEGINNING_CUTOFF = 1
     #shape_values = [[2,2],[2,2,2],[2,2,2,2],[2,2,2,2,2],[2,2,2,2,2,2]][:LIMITING_DIMENSION]
-    shape_values = [[2,2,2,2],[4,4]][:LIMITING_DIMENSION]
+    shape_values = [[2,2],[4,4]][:LIMITING_DIMENSION]
     #shape_values = [[4,4],[4,4,4]]
     #shape_values = [[5,5],[5,5,5]]
     #shape_values = [[3,3],[3,3,3],[3,3,3,3],[3,3,3,3,3],[3,3,3,3,3,3]][:LIMITING_DIMENSION]

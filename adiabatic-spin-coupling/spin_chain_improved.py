@@ -146,14 +146,35 @@ if __name__ == "__main__":
     #print(recursive_hamiltonian(15,[1,1,1],1))
 
     #hset = connected_chain_hamiltonian(4, [-1,0,0], 1)
-    hset = recursive_hamiltonian(2, [-1,0,0], 0.5)
-    print(hset)
-    evs = scipy.sparse.linalg.eigsh(hset)[0]
-    print(evs)
-    print(scipy.sparse.linalg.eigsh(hset)[1])
-    print(scipy.sparse.linalg.eigsh(hset)[1][:,0])
-    plt.hlines(evs,-1,1)
+    n_sizes = range(2,8)
+    y_values = []
+    #J = [0,0,-1]
+    J = [-1,-1,0]
+    for N in n_sizes:
+        hset = recursive_hamiltonian(N, J, -1)
+        evs = scipy.sparse.linalg.eigsh(hset)[0]
+
+        #if N == 2:
+        #    print("TEST")
+        #    #print(hset@np.array([0,0,0,0,0,1,0,0,0,0,1,0,0,0,0,0]))
+        print(scipy.sparse.linalg.eigsh(hset,k=2**N))
+        plt.hlines(evs,-1,1)
+        plt.show()
+        evs.sort()
+        y_values.append(evs[1]-evs[0])
+
+    import scipy
+    #def f(x, a,b,c):
+    #    return a*np.exp(b*x)+c
+    #popt, pcov = scipy.optimize.curve_fit(f, n_sizes, y_values, p0 = [1,-1,1])
+    plt.scatter(n_sizes,y_values)
+    #plt.plot(n_sizes, f(n_sizes, *popt), color="red", linestyle = "dashed")
+    #print(f"Above x-axis by (c in f = ae^bx + c): {popt[2]}")
+    plt.xlabel(r"Size of system $N$")
+    plt.ylabel(r"Energy gap $\Delta E = E_1 - E_0$")
     plt.show()
+    #print(scipy.sparse.linalg.eigsh(hset)[1])
+    #print(scipy.sparse.linalg.eigsh(hset)[1][:,0])
     #print(trotterization_exact.minimal_eigenvector(hset))
 
     #times = []

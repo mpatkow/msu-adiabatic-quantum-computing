@@ -2,32 +2,28 @@ import numpy as np
 from qiskit import QuantumCircuit, QuantumRegister, ClassicalRegister
 from qiskit.circuit import Parameter, Gate
 from qiskit_aer.primitives import Sampler
-from matplotlib import pyplot as plt
-from qiskit_aer import AerSimulator
 
-# For adiabatic evolution
-from spin_fusion_on_quantum_computer import adiabatic_evolution_circuit
-
-# could include alternating XY pauli gate as controlled reversal gate
-
-def XX_interaction(L, beta, cxx, qc):
+def XX_interaction(N, M, beta, cxx, qc):
     # Horizontal interactions
-    for i in range(L):
-        qc.h(i)
-        qc.h(i + 1)
-        qc.cx(i, i + 1)
-        qc.rz(cxx * beta, i + 1)
-        qc.cx(i, i + 1)
+    for row in range(N):
+        for col in range(M - 1):
+            i = row * M + col
+            qc.h(i)
+            qc.h(i + 1)
+            qc.cx(i, i + 1)
+            qc.rz(cxx * beta, i + 1)
+            qc.cx(i, i + 1)
+            qc.h(i)
+            qc.h(i + 1)
 
-# Transverse magnetic field
-def magn_interaction(L, beta, hz, qc):
-    for i in range(L):
+def magn_interaction(N, M, beta, hz, qc):
+    # Transverse magnetic field
+    for i in range(N * M):
         qc.rz(2 * hz * beta, i) # Factor of 2 since that is how we defined the Second-Order Trotterization
-"""
-def rodeo_cycle(L, t: Parameter, r, cxx, hz, targ: Parameter, beta):
-    #beta = t / r # delta T for trotter steps
-    r = t/beta
-    sys = QuantumRegister(L, 's')
+
+def rodeo_cycle(N, M, t: Parameter, r, cxx, cyy, hz, targ: Parameter):
+    beta = t / r # Parameter for rotation gates
+    sys = QuantumRegister(N * M, 's')
     aux = QuantumRegister(1, 'a')
     qc = QuantumCircuit(sys, aux)
 
@@ -35,100 +31,49 @@ def rodeo_cycle(L, t: Parameter, r, cxx, hz, targ: Parameter, beta):
     qc.h(aux[0])
 
     # Add Y reversal gates to odd, X reversal gates to even qubits
-    for i in range(L):
-        idx = i
-        if (i) % 2 == 0:
-            qc.cx(aux[0], sys[idx])
-        else:
-            qc.cy(aux[0], sys[idx])
+    for row in range(N):
+        for col in range(M):
+            idx = row * M + col
+            if (row + col) % 2 == 0:
+                qc.cx(aux[0], sys[idx])
+            else:
+                qc.cy(aux[0], sys[idx])
 
     # Trotter time evolution
     for _ in range(r):
-        XX_interaction(L, beta, cxx, qc)
-        #YY_interaction(N, M, beta, cyy, qc)
-        magn_interaction(L, beta, hz, qc)
-        #YY_interaction(N, M, beta, cyy, qc)
-        XX_interaction(L, beta, cxx, qc)
+        XX_interaction(N, M, beta, cxx, qc)
+        magn_interaction(N, M, beta, hz, qc)
+        XX_interaction(N, M, beta, cxx, qc)
 
     # Add reversal gates at end
-    for i in range(L):
-        idx = i
-        if (i) % 2 == 0:
-            qc.cx(aux[0], sys[idx])
-        else:
-            qc.cy(aux[0], sys[idx])
-            
+    for row in range(N):
+        for col in range(M):
+            idx = row * M + col
+            if (row + col) % 2 == 0:
+                qc.cx(aux[0], sys[idx])
+            else:
+                qc.cy(aux[0], sys[idx])
+                
     # Add phase gate to ancilla
     qc.p(2*targ * t, aux[0])
 
     # Revert superposition
     qc.h(aux[0])
-
-    return qc.to_gate(label=f"Rodeo_Cycle_{r}_Trotter_Steps")
-"""
-
-def rodeo_cycle(L, t, r, cxx, hz, targ: Parameter, beta):
-    beta = t / r # delta T for trotter steps
-    #r = int(t/beta)
-    sys = QuantumRegister(L, 's')
-    aux = QuantumRegister(1, 'a')
-    qc = QuantumCircuit(sys, aux)
-
-    # Initialize ancilla qubit to be in superposition
-    qc.h(aux[0])
-
-    # Add Y reversal gates to odd, X reversal gates to even qubits
-    for i in range(L):
-        idx = i
-        if (i) % 2 == 0:
-            qc.cx(aux[0], sys[idx])
-        else:
-            qc.cy(aux[0], sys[idx])
-
-    # Trotter time evolution
-    for _ in range(r):
-        XX_interaction(L, beta, cxx, qc)
-        #YY_interaction(N, M, beta, cyy, qc)
-        magn_interaction(L, beta, hz, qc)
-        #YY_interaction(N, M, beta, cyy, qc)
-        XX_interaction(L, beta, cxx, qc)
-
-    # Add reversal gates at end
-    for i in range(L):
-        idx = i
-        if (i) % 2 == 0:
-            qc.cx(aux[0], sys[idx])
-        else:
-            qc.cy(aux[0], sys[idx])
-            
-    # Add phase gate to ancilla
-    qc.p(2*targ * t, aux[0])
-
-    # Revert superposition
-    qc.h(aux[0])
-
     return qc.to_gate(label=f"Rodeo_Cycle_{r}_Trotter_Steps")
 
 # Parameters
-L = 2
-cxx = 1
-J = [-cxx, 0,0]
+N = 1 # Keep at 1 for a 1-dimensional chain
+M = 4
+cxx = -1  # Jx
+cyy = 0  # Jy
 hz = 0.5
-numqubits = L
-cycles = 3
-adiabatic_time = 1
-trotter_steps = 3
-
-
-# Initialize system parameters
-sysqubits = 1
-timeresamples = 10
+numqubits = N * M
+cycles = 3 # Number of rodeo cycles
 
 # Create Target and t parameters
 targ = Parameter(r'$E_\odot$')
-#t = [Parameter(fr'$t_{i}$') for i in range(cycles)]
-#r = 5
-beta = 0.1
+t = [Parameter(fr'$t_{i}$') for i in range(cycles)]
+r = 5 # Trotter steps
 
 # Create a list of target energies at the same length of the cycle
 targ_list = [targ] * cycles
@@ -138,42 +83,26 @@ classical = ClassicalRegister(cycles, 'c')
 aux = QuantumRegister(1, 'a')
 sys = QuantumRegister(numqubits, 's')
 circuit = QuantumCircuit(classical, sys, aux)
-#adiabatic_evolution_circuit(L, adiabatic_time, trotter_steps, J, hz, AerSimulator(method="matrix_product_state"), circuit, sys)
 
-# circuit.x(0)
-# initial_state
-i_state = np.array([ 0.92387953+0.j, -0.        -0.j ,-0.        -0.j ,-0.38268343-0.j])
-#i_state = np.array([0.92,0,0,-0.38])
+i_state = np.array([0.92387953,0,0,-0.38268343])
 i_state = i_state/np.linalg.norm(i_state)
 circuit.initialize(i_state, [0,1])
 
-gamma = 1/2
-for _ in range(timeresamples):
-    tsamples = ((1 / gamma) * np.abs(np.random.randn(cycles))).tolist()
-    #tsamples=np.ones(cycles)
-    #parameter_binds.append({t[i]: tsamples[i] for i in range(cycles)})
-
-print(tsamples)
-
-#parameter_binds = zip(t, tsamples)
-#parameters = dict(parameter_binds)
-
-
-
-
 # Create circuit
 for j in range(cycles):
-    circuit.append(rodeo_cycle(L, tsamples[j], 0, cxx, hz, targ_list[j],beta), range(1 + numqubits))
+    circuit.append(rodeo_cycle(N, M, t[j], r, cxx, cyy, hz, targ_list[j]), range(1 + numqubits))
     circuit.measure(aux, classical[j])
 
-print(circuit)
-#circuit.draw(output="mpl")
-#plt.show()
+sigma = 3
+tsamples = (sigma * np.abs(np.random.randn(cycles))).tolist()
+    
+parameter_binds = zip(t, tsamples)
+parameters = dict(parameter_binds)
 
-target = {targ : -3.3}
-#circuit1 = circuit.assign_parameters(parameters, inplace =False)
-#circuit2.draw(output= 'mpl')
-circuit2 = circuit.assign_parameters(target, inplace = False)
+target = {targ : -12.5}
+    
+circuit1 = circuit.assign_parameters(parameters, inplace =False)
+circuit2 = circuit1.assign_parameters(target, inplace = False)
 
 sampler = Sampler()
 
@@ -185,12 +114,10 @@ quasi_dists = job.result().quasi_dists
 
 print(quasi_dists)
 
-
-
 # Enumerate scan energies
-energymin = -4
-energymax = 4
-stepsize = 0.1
+energymin = -1.7
+energymax = -0.5
+stepsize = 0.05
 
 targetenergies = np.linspace(energymin, energymax, int((energymax-energymin)/stepsize))
 targetenergynum = len(targetenergies)
@@ -201,7 +128,6 @@ print("Number of target energies:", targetenergynum)
 
 # Amount of "scrambling" of t per target energy. The more random the t the better. 
 timeresamples = 10 # Resampling of times for given target energy
-shots_per_same_time = 1024
 
 # Create empty list for data
 data = []
@@ -219,15 +145,15 @@ for i in range(len(targetenergies)):
     targetenergyrun = []
     for _ in range(timeresamples):
         # Creates random time samples for 1 run
-        tsamples = ((1 / gamma) * np.random.randn(cycles)).tolist()
+        tsamples = (sigma * np.random.randn(cycles)).tolist()
         
         # Creates a dictionary to be able to bind time samples to time parameters
-        #time_parameter_binds = zip(t, tsamples)
-        #time_parameters = dict(time_parameter_binds)
+        time_parameter_binds = zip(t, tsamples)
+        time_parameters = dict(time_parameter_binds)
         
         # Assigns target energy and time values to parameters
-        #circuit1 = circuit.assign_parameters(time_parameters, inplace =False)
-        circuit2 = circuit.assign_parameters(targ_energy, inplace = False)
+        circuit1 = circuit.assign_parameters(time_parameters, inplace =False)
+        circuit2 = circuit1.assign_parameters(targ_energy, inplace = False)
         
         # Runs simulation of circuit with values
         sampler = Sampler()
@@ -257,8 +183,7 @@ for i in range(len(targetenergies)):
 
     data.append(average_dict)
 
-
-import numpy as np
+    import numpy as np
 import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
 
@@ -288,23 +213,21 @@ def sum_of_gaussians(x, *params):
     return result
 
 # Initial guess for the parameters: amplitudes, centers, and widths of the Gaussians
-initial_guess = [
-    1, -13, 1
-]
+initial_guess = [1, -1.41, 1]
 
 # Fit the sum of Gaussians to the data
-#popt, pcov = curve_fit(sum_of_gaussians, targetenergies, values_list, p0=initial_guess)
+popt, pcov = curve_fit(sum_of_gaussians, targetenergies, values_list, p0=initial_guess)
 
 # Extract the fitted parameters
-#fitted_params = popt
+fitted_params = popt
 
 # Generate x values for plotting the fit
-#x_fit = np.linspace(min(targetenergies), max(targetenergies), 1000)
-#y_fit = sum_of_gaussians(x_fit, *fitted_params)
+x_fit = np.linspace(min(targetenergies), max(targetenergies), 1000)
+y_fit = sum_of_gaussians(x_fit, *fitted_params)
 
 # Plot the data and the fit
 plt.scatter(targetenergies, values_list, label='Data')
-#plt.plot(x_fit, y_fit, color='red', label='Sum of Gaussians fit')
+plt.plot(x_fit, y_fit, color='red', label='Sum of Gaussians fit')
 plt.grid()
 plt.xlabel('Target Energy')
 plt.ylabel('Average Probability')
@@ -313,6 +236,6 @@ plt.legend()
 plt.show()
 
 # Print the peaks (centers) of the Gaussians
-#n_gaussians = len(fitted_params) // 3
-#peaks = [fitted_params[i*3 + 1] for i in range(n_gaussians)]
-#print(f'The peaks (centers) of the Gaussians are at: {peaks}')
+n_gaussians = len(fitted_params) // 3
+peaks = [fitted_params[i*3 + 1] for i in range(n_gaussians)]
+print(f'The peaks (centers) of the Gaussians are at: {peaks}')
