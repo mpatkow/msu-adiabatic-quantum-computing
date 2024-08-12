@@ -6,10 +6,10 @@ import os
 data = {}
 #categories = ["e22.","e22222222.","e4444."]
 #categories = ["e22.","e44.","e88.","e2222222222222222.","e44444444."]
-category_sizes = range(2,10)
-categories = ["e"+str(i)*2+"." for i in category_sizes]
+category_sizes = range(2,9,2)
+categories = ["e"+str(i)*2+"." for i in category_sizes ]
 print(categories)
-#categories = ["e22."]
+#categories = ["e22.", ""]
 #categories = ["e22.","e44.","e88.","e2222222222222222.","e44444444."]
 EPSILON_RODEO = 0.01
 RESULTDIR = "results-2"
@@ -65,15 +65,25 @@ for category in categories:
             category_dataset['estimated_cost_adiabatic_rodeo_2'].append(run_data['t'][-1] * N_rodeo_end/a_sq_end)
             category_dataset['estimated_cost_rodeo_only_2'].append(N_rodeo_start/a_sq_start)
 
-y_values = []
-for category in data.keys():
-    run_dataset = data[category]
-    y_values.append(sorted(run_dataset['overlap_at_end']))
-plt.scatter(category_sizes, y_values)
-plt.xlabel(r"Qubit Number $N \rightarrow 2N$")
-plt.ylabel(r"Overlap $|\langle \phi _0 |\psi _f\rangle |^2$")
-plt.show()
-"""
+
+
+
+#for category in data.keys():
+#    run_dataset = data[category]
+#    plt.plot(run_dataset['total_runtimes'], run_dataset['overlap_at_end'])
+#plt.show()
+
+
+
+#y_values = []
+#for category in data.keys():
+#    run_dataset = data[category]
+#    y_values.append(sorted(run_dataset['overlap_at_end']))
+#y_values_new = [i[0] for i in y_values if i != []]
+#plt.scatter(category_sizes[:len(y_values_new)],y_values_new )
+#plt.xlabel(r"Qubit Number $N \rightarrow 2N$")
+#plt.ylabel(r"Overlap $|\langle \phi _0 |\psi _f\rangle |^2$")
+#plt.show()
 
 plt.subplot(1,2,1)
 for category in data.keys():
@@ -95,4 +105,3 @@ plt.legend()
 plt.xlabel(r"Total runtime $T$")
 plt.ylabel(r"Adiabatic Rodeo Cost / Rodeo Only Cost")
 plt.show()
-"""

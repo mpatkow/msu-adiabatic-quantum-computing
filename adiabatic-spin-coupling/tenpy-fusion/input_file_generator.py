@@ -1,10 +1,11 @@
 import json
 import numpy as np
 
-h_values = [3]
-total_runtime_values = [0]
+h_values = [0]
+#total_runtime_values = [0]
+total_runtime_values = [1,2,3,4,5,6,7,8,9,10]
 j_values = [-1]
-shape_values = [[i] * 2 for i in range(2,50)]
+shape_values = [[i] * 2 for i in range(2,9)]
 
 dmrg_default_params = {
     'mixer': None,  # setting this to True helps to escape local minima

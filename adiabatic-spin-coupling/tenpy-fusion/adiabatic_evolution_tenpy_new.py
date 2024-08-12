@@ -6,6 +6,7 @@ import tenpy
 import matplotlib.pyplot as plt
 from tenpy.algorithms import dmrg, tebd
 from tenpy.models.tf_ising import TFIChain
+from tenpy.models.xxz_chain import XXZChain2 as XXZChain
 
 # Return bound indicies that do not have an interaction initially, based on original chain.
 def get_non_interaction_term_indicies(initial_state):
@@ -15,22 +16,26 @@ def get_non_interaction_term_indicies(initial_state):
     for block_length in initial_state:
         i+=block_length
         indicies.append(i)
+
     return indicies[:-1]
 
 # Model for the transverse ising chain that linearly interpolates the coupling terms based on shape provided
-class AdiabaticHamiltonian(TFIChain):
+class AdiabaticHamiltonian(XXZChain):
     def init_terms(self, model_params):
         c_arr = np.ones(L-1)
+        #for non_coupling_index in get_non_interaction_term_indicies(SHAPE):
+        #    c_arr[non_coupling_index] = 0
         for non_coupling_index in get_non_interaction_term_indicies(SHAPE):
             c_arr[non_coupling_index] = model_params.get('time', 0)/TOTAL_TIME
 
-        model_params['J'] = c_arr * J
-        print(model_params['J'])
+        model_params['Jxx'] = c_arr * J 
+        print("!!!!")
+        print(model_params['Jxx'])
 
         super().init_terms(model_params)
 
 # Measure the desired parameters at a time step in the simulation
-def measurement(eng, data, target_state, final_model):
+def measurement(eng, data, target_state,final_model):
     keys = ['t', 'overlap', 'ene_exp']
     if data is None:
         data = dict([(k, []) for k in keys])
@@ -44,7 +49,7 @@ def measurement(eng, data, target_state, final_model):
 # Run a complete adiabatic evolution (single run) from the initial_model to the final_model
 def complete_adiabatic_evolution_run(initial_model, final_model, dmrg_params, tebd_params, total_time, verbose=True):
     # Guess for the ground state of the initial_model
-    psi0_i_guess = tenpy.networks.mps.MPS.from_lat_product_state(initial_model.lat, [['down'],['up']])
+    psi0_i_guess = tenpy.networks.mps.MPS.from_lat_product_state(initial_model.lat, [['up'], ['down']])
 
     dmrg_eng_uncoupled_state = dmrg.TwoSiteDMRGEngine(psi0_i_guess, initial_model, dmrg_params)
     E0_uncoupled, psi_start = dmrg_eng_uncoupled_state.run()
@@ -62,7 +67,6 @@ def complete_adiabatic_evolution_run(initial_model, final_model, dmrg_params, te
         print("\nDMRG step finished\n\n======================================================\nTime Evolution Preparation...\n")
 
     time_evolution_engine = tebd.TimeDependentTEBD(psi_start, initial_model, tebd_params) 
-    #time_evolution_engine = tebd.TEBDEngine(psi_start, M_i, tebd_params) 
 
     data = measurement(time_evolution_engine, None, psi_actual, final_model)
 
@@ -81,27 +85,27 @@ def complete_adiabatic_evolution_run(initial_model, final_model, dmrg_params, te
 
     data["E0_uncoupled"] = E0_uncoupled
     data["E0_coupled"] = E0_coupled
+
     return data
 
 if __name__ == "__main__":
     from tqdm import tqdm
 
     # Simulation parameters
-    h = 0#0.1
-    TOTAL_TIME = 10
+    h = 0
+    TOTAL_TIME = 20
     J = -1
-    #SHAPE = [1]*16
-    #SHAPE = [8]*2
-    #SHAPE = [2]*4
-    SHAPE = [4]*2
-    #SHAPE = [2]*2
+    SHAPE = [128]*2
+    #SHAPE_F = [16]
     L = sum(SHAPE)
-    total_runtimes = [2,4,6,8,10,20]
+    total_runtimes = np.linspace(1,5,5)
     EPSILON_RODEO = 0.1
-    dt = 1
-    
-    M_i = AdiabaticHamiltonian({'J':J,'g':h,"L":L})
-    M_f = TFIChain({'J':J,'g':h,"L":L})
+   
+    from tenpy.models.xxz_chain import XXZChain
+
+    mu = 0
+    #new_hamiltonian = AdiabaticHamiltonian({"Jxx":J, "Jz":0, "hz":mu, "L":L})
+    #Z_operator = XXZChain({'Jxx':0,"Jz":0,'hz':1,"L":L}).calc_H_MPO()
 
     dmrg_params = {
         'mixer': True,  # setting this to True helps to escape local minima
@@ -113,9 +117,38 @@ if __name__ == "__main__":
         'combine': True,
     }
 
+    #psi0_i_guess = tenpy.networks.mps.MPS.from_lat_product_state(new_hamiltonian.lat, [['down'],['up']])
+
+
+    #print(f"<Z> guess {Z_operator.expectation_value(psi0_i_guess)}")
+    #print(f"<E> guess {new_hamiltonian.calc_H_MPO().expectation_value(psi0_i_guess)}")
+    #dmrg_eng_uncoupled_state = dmrg.TwoSiteDMRGEngine(psi0_i_guess, new_hamiltonian, dmrg_params)
+    #E0_uncoupled, psi_start = dmrg_eng_uncoupled_state.run()
+    #print("=== DMRG ... ===")
+    #print(f"<Z> ground {Z_operator.expectation_value(psi_start)}")
+    #print(f"<E> ground {E0_uncoupled}")
+
+
+    M_i = AdiabaticHamiltonian({"Jxx":J, "Jz":0, "hz":mu, "L":L})
+    #c_arr = np.ones(L-1)
+    #for non_coupling_index in get_non_interaction_term_indicies(SHAPE_F):
+    #    c_arr[non_coupling_index] = 0
+    M_f = XXZChain({'Jxx':J,"Jz":0,'hz':mu,"L":L})
+    #M_f = XXZChain({'J':J*c_arr,'g':h,"L":L})
+
+    dmrg_params = {
+        'mixer': None,  # setting this to True helps to escape local minima
+        'max_E_err': 1.e-10,
+        'trunc_params': {
+            'chi_max': 100,
+            'svd_min': 1.e-10,
+        },
+        'combine': True,
+    }
+
     tebd_params = {
         'N_steps': 1,
-        'dt': dt,
+        'dt': 1,
         'order': 4,
         'trunc_params': {'chi_max': 100, 'svd_min': 1.e-12}
     }
@@ -126,8 +159,6 @@ if __name__ == "__main__":
     y_plots = []
     for TOTAL_TIME in tqdm(total_runtimes):
         run_data = complete_adiabatic_evolution_run(M_i, M_f, dmrg_params, tebd_params, TOTAL_TIME)
-        #plt.plot(run_data['t'], run_data['overlap'])
-        #plt.show()
         x_plots.append(run_data['t'])
         y_plots.append(run_data['overlap'])
         data['overlap_at_end'].append(run_data['overlap'][-1])
@@ -162,6 +193,27 @@ if __name__ == "__main__":
     plt.xlabel(r"Total runtime $T$")
     plt.ylabel(r"Adiabatic Rodeo Cost / Rodeo Only Cost")
     plt.show()
+
+    outfile = "adiabatic_result.dat"
+    with open(outfile, "a") as f:
+        firstline = ""
+        for keyname in data.keys():
+            firstline+=keyname
+            firstline+=","
+        firstline = firstline[:-1]
+        f.write(firstline+"\n")
+        things_to_write = []
+        for keyname in data.keys():
+            things_to_write.append(data[keyname])
+        for i in range(len(things_to_write[0])):
+            to_write = ""
+            for thing in things_to_write:
+                to_write += str(float(thing[i]))
+                to_write += ","
+            to_write = to_write[:-1]
+            f.write(to_write +"\n")
+
+
 
 
     def exp_fit_overlap(x, a, b):
