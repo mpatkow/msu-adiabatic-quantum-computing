@@ -8,20 +8,24 @@ from tqdm import tqdm
 
 # Model parameters
 J = -1
-SHAPE = [8]*2
+#SHAPE = [8]*2
+SHAPE = [2]*2
 L = sum(SHAPE)
 mu = 0
 
 # Simulation parameters
-#E_target_vals = np.linspace(-1.1,-1,1)
-#E_target_vals = np.linspace(-1.15,-1.05,20)
-#E_target_vals = np.linspace(-1.1180,-1.1179,2)
-E_target_vals = np.linspace(-4.91898,-4.91898,2)
-sigma = 1
+#E_target_vals = np.linspace(-1.120,-1.100,8)
+#E_target_vals = np.linspace(-1.15,-1.05,10)
+E_target_vals = np.linspace(-1.1180,-1.1179,1)
+#E_target_vals = np.linspace(-4.91898,-4.91898,2)
+#E_target_vals = np.linspace(-4.95,-4.9,5)
+#E_target_vals = np.linspace(-1.5,-0.5,20)
+sigma = 20
 #r = 3
-r_vals = [1] 
-resamples = 100
-ADIABATIC_TIME = 1
+r_vals = [6]
+#r_vals = [0] 
+resamples = 50
+ADIABATIC_TIME = 0
 
 dmrg_params = {
     'mixer': None,  # setting this to True helps to escape local minima
@@ -54,6 +58,7 @@ initial_state_guess = tenpy.networks.mps.MPS.from_lat_product_state(initial_grou
 
 # Use DMRG to calculate initial ground state of uncoupled model
 #dmrg_eng_uncoupled_state = dmrg.TwoSiteDMRGEngine(initial_state_guess, initial_ground_hamiltonian_dmrg, dmrg_params)
+#dmrg_eng_uncoupled_state = dmrg.TwoSiteDMRGEngine(initial_state_guess, rodeo_H, dmrg_params)
 #E0_uncoupled, initial_state = dmrg_eng_uncoupled_state.run()
 
 # Get initial state from adiabatic method
@@ -85,7 +90,6 @@ dmrg_eng_final_state = dmrg.TwoSiteDMRGEngine(initial_state.copy(), rodeo_H, dmr
 E0_coupled, goal_state = dmrg_eng_final_state.run() 
 
 #print(goal_state.overlap(psi_i_for_i_overlap))
-print(goal_state.overlap(goal_state))
 
 y_vals_FAKE = []
 for r in r_vals:
@@ -96,6 +100,8 @@ for r in r_vals:
         y_val_set = []
         y_val_set_2 = []
         time_samples = np.abs(sigma*np.random.randn(r)) # Absolute value as TEBD doesn't work with negative times
+        #print("TIME SAMPLES")
+        #print(time_samples)
         for E_target in tqdm(E_target_vals,leave=False):
             #time_samples = np.abs(sigma*np.random.randn(r)) # Absolute value as TEBD doesn't work with negative times
             RENAME_DATA,RENAME_DATA_2 = rt.rodeo_run_with_given_time_samples(rodeo_H, initial_state, goal_state, E_target, time_samples, tebd_params)
@@ -106,12 +112,53 @@ for r in r_vals:
     y_vals_FAKE.append(np.mean(y_vals,axis=0)[0])
     print('overlap')
     print(np.mean(y_vals,axis=0))
+    OVERLAP_TO_WRITE = str(np.mean(y_vals,axis=0)[0].real)
+    calculated_overlap = np.mean(y_vals,axis=0)[0]
+    #print("standard deviation")
+    #iiiii = 0
+    #while True:
+    #    try:
+    #        print(np.std(np.array(y_vals)[:,iiiii]))
+    #        iiiii+=1
+    #    except:
+    #        break
+    #        
+    calculated_sp = np.mean(y_vals_2,axis=0)[0]
     print('success chance')
     print(np.mean(y_vals_2,axis=0))
+    SUCCESS_CHANCE_TO_WRITE = str(np.mean(y_vals_2,axis=0)[0].real)
+    print('cost')
+    if r == 0:
+        print(ADIABATIC_TIME)
+    else:
+        print(r/calculated_sp*(ADIABATIC_TIME + sigma))
+    #print("standard deviation")
+    #iiiii = 0
+    #while True:
+    #    try:
+    #        print(np.std(np.array(y_vals_2)[:,iiiii]))
+    #        iiiii+=1
+    #    except:
+    #        break
     plt.plot(E_target_vals,np.mean(y_vals,axis=0),label="overlap")
+    #for yvalset in y_vals:
+        #plt.scatter(E_target_vals,yvalset,label="overlap")
     plt.plot(E_target_vals,np.mean(y_vals_2,axis=0),label="success_chance")
+    #for yvalset2 in y_vals_2:
+    #    plt.scatter(E_target_vals,yvalset2,label="success_chance")
     plt.legend()
     plt.show()
+
+    TOWRITENAME = "adiabatic_rodeo_results.dat"
+    with open(TOWRITENAME,"a") as f:
+        towritestring = ""
+        for shapev in SHAPE:
+            towritestring += str(shapev)
+        towritestring += ','
+        towritestring += str(sigma) + "," + str(r) + "," + str(ADIABATIC_TIME) + "," + str(resamples) + "," + OVERLAP_TO_WRITE + "," + SUCCESS_CHANCE_TO_WRITE + "," + str(tebd_params['dt']) + "\n"
+        f.write(towritestring)
+
+
 plt.plot(r_vals, y_vals_FAKE)
 plt.show()
 

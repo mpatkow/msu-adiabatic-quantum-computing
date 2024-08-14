@@ -149,9 +149,10 @@ if __name__ == "__main__":
     n_sizes = [4]
     y_values = []
     #J = [0,0,-1]
-    J = [1,1,0]
+    J = [0.25,0.25,0]
     for N in n_sizes:
         hset = recursive_hamiltonian(N, J, 0)
+        print(hset)
         evs = scipy.sparse.linalg.eigsh(hset)[0]
 
         #if N == 2:

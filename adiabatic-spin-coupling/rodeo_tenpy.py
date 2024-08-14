@@ -61,6 +61,7 @@ def rodeo_run_with_given_time_samples(hamiltonian, input_state, target_state, E_
                 f_operators_without_coeffs.append(time_evolution_engine.psi.copy())
                 measurement_overlaps.append(measurement_overlap)
         time_evolution_engine.run()
+    #print("finished time evolution")
    
     norm_sq = 0
     for i in range(len(coeffs_for_f_operators)):
@@ -69,6 +70,7 @@ def rodeo_run_with_given_time_samples(hamiltonian, input_state, target_state, E_
             #print(coeffs_for_f_operators[j])
             norm_sq += np.conj(coeffs_for_f_operators[i]) * coeffs_for_f_operators[j] * f_operators_without_coeffs[i].overlap(f_operators_without_coeffs[j])
     norm_sq /= (len(measurement_times)**2)
+    #print("calculated all norms/overlaps")
 
     #print("!!!")
     #print(norm)
