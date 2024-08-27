@@ -116,6 +116,16 @@ def connected_chain_hamiltonian(N, J, h):
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
     import time
+
+    t1 = time.perf_counter()
+    #ham_created = hamiltonian_of_set(10,[-1,-1,-1],1)
+    ham_created = recursive_hamiltonian_sparse(23,[-1,-1,-1],1)
+    t2 = time.perf_counter()
+
+    print(ham_created)
+    print(t2-t1)
+    print("end")
+    exit()
     
     #test_size = 24
     #t1 = time.perf_counter()
@@ -149,7 +159,7 @@ if __name__ == "__main__":
     n_sizes = [4]
     y_values = []
     #J = [0,0,-1]
-    J = [0.25,0.25,0]
+    J = [1,1,-2]
     for N in n_sizes:
         hset = recursive_hamiltonian(N, J, 0)
         print(hset)

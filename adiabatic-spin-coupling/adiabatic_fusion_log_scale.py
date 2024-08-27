@@ -70,21 +70,19 @@ def main():
     # Simulation parameters
     h = 0
     J = 1 # Usually 1
-    SHAPE = [4]*2
+    SHAPE = [2]*2
     #SHAPE2 = [2]*2
     #TOTAL_TIME = 20
     #SHAPE_F = [16]
     L = sum(SHAPE)
     #L2 = sum(SHAPE2)
-    #total_runtimes = np.linspace(6.45,6.55,20)
-    #total_runtimes = np.linspace(7.8,7.9,10)
+    total_runtimes = np.linspace(0,10,10)
     EPSILON_RODEO = 0.1
-    Jz = -0.4       # -0.9 #-2 #-10 #-1.5 #-0.5
-    bp_h = 0 #-0.1 #-0.1 #-0.001 #-1e-1 #-0.01 #-0.000001 #-1
+    Jz = 0 #-10 #-1.5 #-0.5
+    bp_h = 0 #-1
    
     #from tenpy.models.xxz_chain import XXZChain
 
-    epsilon = 0.01
     mu = 0
     #new_hamiltonian = AdiabaticHamiltonian({"Jxx":J, "Jz":Jz, "hz":mu, "L":L})
     #Z_operator = XXZChain({'Jxx':0,"Jz":0,'hz':1,"L":L}).calc_H_MPO()
@@ -136,69 +134,52 @@ def main():
         'trunc_params': {'chi_max': 100, 'svd_min': 1.e-12}
     }
 
-    prec = 1
-    total_runtimes = np.linspace(0,2,2)
-    step = 2
-    while True:
-        data = {'total_runtimes':total_runtimes, 'overlap_at_end':[], 'estimated_cost_adiabatic_rodeo':[], 'estimated_cost_rodeo_only':[], 'estimated_cost_adiabatic_rodeo_2':[], 'estimated_cost_rodeo_only_2':[]}
+    data = {'total_runtimes':total_runtimes, 'overlap_at_end':[], 'estimated_cost_adiabatic_rodeo':[], 'estimated_cost_rodeo_only':[], 'estimated_cost_adiabatic_rodeo_2':[], 'estimated_cost_rodeo_only_2':[]}
 
-        x_plots = []
-        y_plots = []
-        for TOTAL_TIME in tqdm(total_runtimes):
-            M_i = xxzhs.AdiabaticHamiltonianWithCenterPotential({"Jxx":J, "Jz":Jz, "hz":mu, "L":L, "shape":SHAPE, "adiabatic_time":TOTAL_TIME, "Jxx_coeff":J, "Jz_coeff":Jz, "boundary_potential":bp_h})
-            #M_i = AdiabaticHamiltonian({"Jxx":J, "Jz":Jz, "hz":mu, "L":L, "shape":SHAPE, "adiabatic_time":TOTAL_TIME, "Jxx_coeff":J, "Jz_coeff":Jz})
-            #M_i2 = xxzhs.AdiabaticHamiltonian({"Jxx":J, "Jz":Jz, "hz":mu, "L":L2, "shape":SHAPE, "adiabatic_time":TOTAL_TIME})
-            #run_data1, psi_adiabatic_result_22 = complete_adiabatic_evolution_run(M_i2, M_f2, dmrg_params, tebd_params, TOTAL_TIME)
-            #combined_initial_state = tenpy.networks.mps.MPS.from_product_mps_covering([psi_adiabatic_result_22,psi_adiabatic_result_22],[[0,1,2,3],[4,5,6,7]])
-            #LAT_PROD = [['down'],['down'],['up'],['up']]  # [['up'],['down']]   #[['up'],['up'],['down'],['down']]
-            LAT_PROD = [['down'],['up']]
-            #LAT_PROD = [['up'],['up'],['up'],['up'],['down'],['down'],['down'],['down']]
-            DIRECT_INPUT_STATE = tenpy.networks.mps.MPS.from_lat_product_state(M_i.lat,LAT_PROD)
-            #run_data, _ = complete_adiabatic_evolution_run(M_i, M_f, [["up"],["down"]], dmrg_params, tebd_params, TOTAL_TIME) #initial_state = psi_adiabatic_result_)
-            run_data, _ = complete_adiabatic_evolution_run(M_i, M_f, LAT_PROD, dmrg_params, tebd_params, TOTAL_TIME) #, initial_state = DIRECT_INPUT_STATE)
-            x_plots.append(run_data['t'])
-            y_plots.append(run_data['overlap'])
-            data['overlap_at_end'].append(run_data['overlap'][-1])
+    x_plots = []
+    y_plots = []
+    for TOTAL_TIME in tqdm(total_runtimes):
+        M_i = xxzhs.AdiabaticHamiltonianWithCenterPotential({"Jxx":J, "Jz":Jz, "hz":mu, "L":L, "shape":SHAPE, "adiabatic_time":TOTAL_TIME, "Jxx_coeff":J, "Jz_coeff":Jz, "boundary_potential":bp_h})
+        #M_i = AdiabaticHamiltonian({"Jxx":J, "Jz":Jz, "hz":mu, "L":L, "shape":SHAPE, "adiabatic_time":TOTAL_TIME, "Jxx_coeff":J, "Jz_coeff":Jz})
+        #M_i2 = xxzhs.AdiabaticHamiltonian({"Jxx":J, "Jz":Jz, "hz":mu, "L":L2, "shape":SHAPE, "adiabatic_time":TOTAL_TIME})
+        #run_data1, psi_adiabatic_result_22 = complete_adiabatic_evolution_run(M_i2, M_f2, dmrg_params, tebd_params, TOTAL_TIME)
+        #combined_initial_state = tenpy.networks.mps.MPS.from_product_mps_covering([psi_adiabatic_result_22,psi_adiabatic_result_22],[[0,1,2,3],[4,5,6,7]])
+        #LAT_PROD = [['down'],['up'],['up'],['down']]  # [['up'],['down']]   #[['up'],['up'],['down'],['down']]
+        LAT_PROD = [['up'],['down']]
+        DIRECT_INPUT_STATE = tenpy.networks.mps.MPS.from_lat_product_state(M_i.lat,LAT_PROD)
+        #run_data, _ = complete_adiabatic_evolution_run(M_i, M_f, [["up"],["down"]], dmrg_params, tebd_params, TOTAL_TIME) #initial_state = psi_adiabatic_result_)
+        run_data, _ = complete_adiabatic_evolution_run(M_i, M_f, LAT_PROD, dmrg_params, tebd_params, TOTAL_TIME) #, initial_state = DIRECT_INPUT_STATE)
+        x_plots.append(run_data['t'])
+        y_plots.append(run_data['overlap'])
+        data['overlap_at_end'].append(run_data['overlap'][-1])
 
-            # Calculate the estimated cost. That is 1/overlap * adiabatic_time
-            data['estimated_cost_adiabatic_rodeo'].append(run_data['t'][-1] * 1/run_data['overlap'][-1])
-            #print(f"Estimated cost for applying rodeo after a single [2]*n -> [2n] adiabatic fusion: {estimated_cost_adiabatic_rodeo}")
+        # Calculate the estimated cost. That is 1/overlap * adiabatic_time
+        data['estimated_cost_adiabatic_rodeo'].append(run_data['t'][-1] * 1/run_data['overlap'][-1])
+        #print(f"Estimated cost for applying rodeo after a single [2]*n -> [2n] adiabatic fusion: {estimated_cost_adiabatic_rodeo}")
 
-            # Calculate the estimated cost for only rodeo. That is 1/(overlap (t=0))
-            data['estimated_cost_rodeo_only'].append(1/run_data['overlap'][0])
-            #print(f"Estimated cost for applying rodeo to initial state of [2]*n: {estimated_cost_rodeo_only}")
+        # Calculate the estimated cost for only rodeo. That is 1/(overlap (t=0))
+        data['estimated_cost_rodeo_only'].append(1/run_data['overlap'][0])
+        #print(f"Estimated cost for applying rodeo to initial state of [2]*n: {estimated_cost_rodeo_only}")
 
-            # Calculate the estimated cost by new method.  
-            a_sq_end = run_data['overlap'][-1]
-            N_rodeo_end = max(1,np.log2(1/EPSILON_RODEO * (1/a_sq_end - 1)))
-            a_sq_start = run_data['overlap'][0]
-            N_rodeo_start = max(1,np.log2(1/EPSILON_RODEO * (1/a_sq_start - 1)))
-            data['estimated_cost_adiabatic_rodeo_2'].append(run_data['t'][-1] * N_rodeo_end/a_sq_end)
-            data['estimated_cost_rodeo_only_2'].append(N_rodeo_start/a_sq_start)
-        if np.max(run_data['overlap']) > 1 - epsilon:
-            prec *= 0.1
-            total_runtimes = np.linspace(int(np.min(total_runtimes)),int(np.max(total_runtimes)), int((np.max(total_runtimes)-np.min(total_runtimes))/prec)+1)
-        else:
-            total_runtimes = np.linspace(int(np.max(total_runtimes)), int(np.max(total_runtimes))+step, int(step/prec)+1)
-        if prec < 0.02:
-            break
-
-        print("!!!!!!!!!!")
-        print(total_runtimes)
-        print("!!!!!!!!!!")
-
+        # Calculate the estimated cost by new method.  
+        a_sq_end = run_data['overlap'][-1]
+        N_rodeo_end = max(1,np.log2(1/EPSILON_RODEO * (1/a_sq_end - 1)))
+        a_sq_start = run_data['overlap'][0]
+        N_rodeo_start = max(1,np.log2(1/EPSILON_RODEO * (1/a_sq_start - 1)))
+        data['estimated_cost_adiabatic_rodeo_2'].append(run_data['t'][-1] * N_rodeo_end/a_sq_end)
+        data['estimated_cost_rodeo_only_2'].append(N_rodeo_start/a_sq_start)
 
 
     import matplotlib.pyplot as plt
     plt.subplot(1,2,1)
-    #plt.plot(data['total_runtimes'], np.ones(len(data['overlap_at_end']))-data['overlap_at_end'], color="black", linestyle="dashed")
-    plt.plot(data['total_runtimes'], data['overlap_at_end'], color="black", linestyle="dashed")
-    #plt.yscale("log")
+    plt.plot(data['total_runtimes'], np.ones(len(data['overlap_at_end']))-data['overlap_at_end'], color="black", linestyle="dashed")
+    #plt.plot(data['total_runtimes'], data['overlap_at_end'], color="black", linestyle="dashed")
+    plt.yscale("log")
     #for x_plot,y_plot in zip(x_plots, y_plots):
     #    plt.plot(x_plot, y_plot)
     plt.xlabel(r"Total runtime $T$")
-    #plt.ylabel(r"1 minus Overlap $1-|\langle \psi _0 | \phi \rangle |^2$")
-    plt.ylabel(r"Overlap $|\langle \psi _0 | \phi \rangle |^2$")
+    plt.ylabel(r"1 minus Overlap $1-|\langle \psi _0 | \phi \rangle |^2$")
+    #plt.ylabel(r"Overlap $|\langle \psi _0 | \phi \rangle |^2$")
     plt.subplot(1,2,2)
     plt.plot(data['total_runtimes'], np.divide(data['estimated_cost_adiabatic_rodeo'], data['estimated_cost_rodeo_only']), label="original_method")
     plt.plot(data['total_runtimes'], np.divide(data['estimated_cost_adiabatic_rodeo_2'], data['estimated_cost_rodeo_only_2']), label="including rodeo cycles")
@@ -206,14 +187,6 @@ def main():
     plt.xlabel(r"Total runtime $T$")
     plt.ylabel(r"Adiabatic Rodeo Cost / Rodeo Only Cost")
     plt.show()
-
-    time_values = data['total_runtimes']
-    overlap_values = data['overlap_at_end']
-
-    overlap_values_epsilon_boolean_i = [overlap_value > 1-epsilon for overlap_value in overlap_values].index(np.True_)
-    print(f"minimum time when overlap is within {epsilon} of 1: {time_values[overlap_values_epsilon_boolean_i]}")
-
-    exit()
 
     outfile = "adiabatic_result.dat"
     with open(outfile, "a") as f:
