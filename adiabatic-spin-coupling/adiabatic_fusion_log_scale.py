@@ -70,13 +70,13 @@ def main():
     # Simulation parameters
     h = 0
     J = 1 # Usually 1
-    SHAPE = [2]*2
+    SHAPE = [16]*2
     #SHAPE2 = [2]*2
     #TOTAL_TIME = 20
     #SHAPE_F = [16]
     L = sum(SHAPE)
     #L2 = sum(SHAPE2)
-    total_runtimes = np.linspace(0,10,10)
+    total_runtimes = np.linspace(0,80,40)
     EPSILON_RODEO = 0.1
     Jz = 0 #-10 #-1.5 #-0.5
     bp_h = 0 #-1
@@ -108,7 +108,7 @@ def main():
     #print(f"<Z> ground {Z_operator.expectation_value(psi_start)}")
     #print(f"<E> ground {E0_uncoupled}")
 
-    M_f = xxzhs.XXZChainWithCenterPotential({'Jxx':J,"Jz":Jz,'hz':mu,"L":L, "boundary_potential":bp_h})
+    M_f = xxzhs.XXZChainWithSlantPotential({'Jxx':J,"Jz":Jz,'hz':mu,"L":L, "boundary_potential":bp_h})
     #M_f2 = XXZChain({'Jxx':J,"Jz":Jz,'hz':mu,"L":L2})
         #M_i = AdiabaticHamiltonian({"Jxx":J, "Jz":Jz, "hz":mu, "L":L})
     #c_arr = np.ones(L-1)
@@ -129,7 +129,7 @@ def main():
 
     tebd_params = {
         'N_steps': 1,
-        'dt': 0.5,
+        'dt': 1,
         'order': 4,
         'trunc_params': {'chi_max': 100, 'svd_min': 1.e-12}
     }
@@ -139,13 +139,14 @@ def main():
     x_plots = []
     y_plots = []
     for TOTAL_TIME in tqdm(total_runtimes):
-        M_i = xxzhs.AdiabaticHamiltonianWithCenterPotential({"Jxx":J, "Jz":Jz, "hz":mu, "L":L, "shape":SHAPE, "adiabatic_time":TOTAL_TIME, "Jxx_coeff":J, "Jz_coeff":Jz, "boundary_potential":bp_h})
+        M_i = xxzhs.AdiabaticHamiltonianWithSlantPotential({"Jxx":J, "Jz":Jz, "hz":mu, "L":L, "shape":SHAPE, "adiabatic_time":TOTAL_TIME, "Jxx_coeff":J, "Jz_coeff":Jz, "boundary_potential":bp_h})
         #M_i = AdiabaticHamiltonian({"Jxx":J, "Jz":Jz, "hz":mu, "L":L, "shape":SHAPE, "adiabatic_time":TOTAL_TIME, "Jxx_coeff":J, "Jz_coeff":Jz})
         #M_i2 = xxzhs.AdiabaticHamiltonian({"Jxx":J, "Jz":Jz, "hz":mu, "L":L2, "shape":SHAPE, "adiabatic_time":TOTAL_TIME})
         #run_data1, psi_adiabatic_result_22 = complete_adiabatic_evolution_run(M_i2, M_f2, dmrg_params, tebd_params, TOTAL_TIME)
         #combined_initial_state = tenpy.networks.mps.MPS.from_product_mps_covering([psi_adiabatic_result_22,psi_adiabatic_result_22],[[0,1,2,3],[4,5,6,7]])
         #LAT_PROD = [['down'],['up'],['up'],['down']]  # [['up'],['down']]   #[['up'],['up'],['down'],['down']]
-        LAT_PROD = [['up'],['down']]
+        #LAT_PROD = [['up'],['down']]
+        LAT_PROD = [['down'],['down'],['down'],['up']]
         DIRECT_INPUT_STATE = tenpy.networks.mps.MPS.from_lat_product_state(M_i.lat,LAT_PROD)
         #run_data, _ = complete_adiabatic_evolution_run(M_i, M_f, [["up"],["down"]], dmrg_params, tebd_params, TOTAL_TIME) #initial_state = psi_adiabatic_result_)
         run_data, _ = complete_adiabatic_evolution_run(M_i, M_f, LAT_PROD, dmrg_params, tebd_params, TOTAL_TIME) #, initial_state = DIRECT_INPUT_STATE)
@@ -172,6 +173,7 @@ def main():
 
     import matplotlib.pyplot as plt
     plt.subplot(1,2,1)
+    print(data['overlap_at_end'])
     plt.plot(data['total_runtimes'], np.ones(len(data['overlap_at_end']))-data['overlap_at_end'], color="black", linestyle="dashed")
     #plt.plot(data['total_runtimes'], data['overlap_at_end'], color="black", linestyle="dashed")
     plt.yscale("log")
@@ -212,6 +214,7 @@ def main():
 
     x = data['total_runtimes']
     yn = data['overlap_at_end']
+    print(yn)
 
     import scipy
     popt, pcov = scipy.optimize.curve_fit(exp_fit_overlap, x, yn, p0=(5,-0.5))

@@ -137,7 +137,7 @@ def run(SHAPE, TOTAL_TIME, TROTTER_STEPS, D_TIME, CONSTANT_H, J, SHOW_PLOT, INTE
     return e_exp, ground_state_energy, g_state_overlap, energies, e1_state_overlap
 
 if __name__ == "__main__":
-    TOTAL_TIME = 5
+    TOTAL_TIME = 6
     TROTTER_STEPS = 50
     D_TIME = TOTAL_TIME/TROTTER_STEPS
     CONSTANT_H = 0

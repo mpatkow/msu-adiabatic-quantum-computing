@@ -79,7 +79,7 @@ def main():
     #total_runtimes = np.linspace(6.45,6.55,20)
     #total_runtimes = np.linspace(7.8,7.9,10)
     EPSILON_RODEO = 0.1
-    Jz = -0.4       # -0.9 #-2 #-10 #-1.5 #-0.5
+    Jz = -0       # -0.9 #-2 #-10 #-1.5 #-0.5
     bp_h = 0 #-0.1 #-0.1 #-0.001 #-1e-1 #-0.01 #-0.000001 #-1
    
     #from tenpy.models.xxz_chain import XXZChain
@@ -186,8 +186,6 @@ def main():
         print("!!!!!!!!!!")
         print(total_runtimes)
         print("!!!!!!!!!!")
-
-
 
     import matplotlib.pyplot as plt
     plt.subplot(1,2,1)

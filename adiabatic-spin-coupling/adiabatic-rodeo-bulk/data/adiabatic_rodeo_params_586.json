@@ -1,0 +1,70 @@
+{
+    "initial_guess_lat": [
+        [
+            "down"
+        ],
+        [
+            "up"
+        ]
+    ],
+    "dmrg_params": {
+        "mixer": null,
+        "max_E_err": 1e-10,
+        "trunc_params": {
+            "chi_max": 100,
+            "svd_min": 1e-10
+        },
+        "combine": true
+    },
+    "special_xxzmodel_params": {
+        "shape": [
+            16,
+            16
+        ],
+        "Jxx_coeff": 1,
+        "Jxx": 1,
+        "Jz_coeff": 0,
+        "Jz": 0,
+        "hz": 0,
+        "boundary_potential": 0,
+        "L": 32
+    },
+    "adiabatic_params": {
+        "adiabatic_time": 34,
+        "verbose": true,
+        "tebd_params": {
+            "N_steps": 1,
+            "dt": 0.1,
+            "order": 4,
+            "trunc_params": {
+                "chi_max": 100,
+                "svd_min": 1e-12
+            }
+        }
+    },
+    "rodeo_params": {
+        "resamples": 1,
+        "r_value": 1,
+        "r_superiteration": 20,
+        "sigma": 21,
+        "e_target": -10.0081939502417,
+        "tebd_params": {
+            "N_steps": 1,
+            "dt": 0.1,
+            "order": 4,
+            "trunc_params": {
+                "chi_max": 100,
+                "svd_min": 1e-12
+            }
+        }
+    },
+    "verbose": true,
+    "write_to_outfile": false,
+    "outfile": "adiabatic_rodeo_results.csv",
+    "saved_mps_bool": false,
+    "save_mps_bool": false,
+    "saved_mps_filename": "asdf.pkl",
+    "super_iterations": true
+}
+overlap,success_probability,cost
+0.9999419201061668,0.9981480818340429,75.53989370140009
