@@ -3,16 +3,16 @@ import os
 import numpy as np
 
 #adiabatic_times = np.concatenate((np.linspace(0,30,31), np.linspace(30,50,11)))
-adiabatic_times = [0]
+adiabatic_times = [11,12,13,14,15,16,17,18,19,20,21,22,23,24,25]
 #r_values = [int(j) for j in np.linspace(1,1,1)]
-r_values = [1]
-sigma_values = [40] #[17.984] #[164] # using 3.3 for the [2,2] case using 5.76 for the [4,4] case. 10.8 for the [8,8] case, 21 for [16,16] case, 82 for [64,64], 164 for [128,128]
+r_values = [0,1,2,3,4,5]
+sigma_values = [1.65] #[3.3] #[17.984] #[164] # using 3.3 for the [2,2] case using 5.76 for the [4,4] case. 10.8 for the [8,8] case, 21 for [16,16] case, 82 for [64,64], 164 for [128,128]
 i = 0
 for adiabatic_time in adiabatic_times:
     for r_value in r_values:
         for sigma_value in sigma_values:
             data = {
-            'initial_guess_lat': [['down'],['up']], #[['down'],['down'],['down'],['up']],#[['down'],['up']],
+            'initial_guess_lat': [['down'],['up']], #2*[["down"]] + 2*[['up']], #[['down'],['up']], #[['down'],['down'],['down'],['up']],#[['down'],['up']],
             'dmrg_params' : {
             'mixer': None,  # setting this to True helps to escape local minima
             'max_E_err': 1.e-10,
@@ -23,11 +23,11 @@ for adiabatic_time in adiabatic_times:
             'combine': True,
             },
             'special_xxzmodel_params' : {
-                'shape' : [4]*2,
+                'shape' : [2]*2,
                 'Jxx_coeff' : 1,
                 'Jxx' : 1,
-                'Jz_coeff' : -1,
-                "Jz" : -1,
+                'Jz_coeff' : 0,
+                "Jz" : 0,
                 'hz' : 0,
                 'boundary_potential' : 0,
             },
@@ -36,7 +36,7 @@ for adiabatic_time in adiabatic_times:
             'verbose' : True,
             'tebd_params' : {
                 'N_steps': 1,
-                'dt': 1, # VERY LOW ACCURACY!!!!!
+                'dt': 0.11, # VERY LOW ACCURACY!!!!!
                 'order': 4,
                 'trunc_params': {'chi_max': 100, 'svd_min': 1.e-12}
                 },

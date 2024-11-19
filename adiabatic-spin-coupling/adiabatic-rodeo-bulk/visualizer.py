@@ -29,7 +29,7 @@ def verifysize(size,r):
 for datafilename in os.listdir(datadir):
     with open(datadir + datafilename, "r") as f:
         r = f.readlines()
-        if "cost" in r[-2] and verifysize("1616",r):
+        if "cost" in r[-2] and verifysize("22",r):
             for line_r in r:
                 if "adiabatic_time" in line_r:
                     adiabatic_times.append(float(line_r.split(" ")[-1].rstrip(",\n")))
@@ -43,7 +43,7 @@ y_values_unnorm = np.array([costs])
 y_values = y_values_unnorm
 z_values = np.abs(np.log10(np.ones(len(overlaps))-overlaps))
 
-minlim = 4
+minlim = 0
 maxlim = 100
 plt.scatter(x_values, y_values, c=z_values*(z_values>minlim)*(z_values<maxlim))
 plt.xlabel(r"adiabatic time ratio: $\frac{T_\mathrm{RA}}{T}$")

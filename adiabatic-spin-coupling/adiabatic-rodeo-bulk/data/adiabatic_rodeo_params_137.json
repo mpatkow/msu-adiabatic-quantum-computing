@@ -18,8 +18,8 @@
     },
     "special_xxzmodel_params": {
         "shape": [
-            4,
-            4
+            2,
+            2
         ],
         "Jxx_coeff": 1,
         "Jxx": 1,
@@ -27,14 +27,14 @@
         "Jz": 0,
         "hz": 0,
         "boundary_potential": 0,
-        "L": 8
+        "L": 4
     },
     "adiabatic_params": {
-        "adiabatic_time": 5.0,
+        "adiabatic_time": 12,
         "verbose": true,
         "tebd_params": {
             "N_steps": 1,
-            "dt": 0.1,
+            "dt": 0.11,
             "order": 4,
             "trunc_params": {
                 "chi_max": 100,
@@ -44,10 +44,10 @@
     },
     "rodeo_params": {
         "resamples": 1,
-        "r_value": 3,
-        "r_superiteration": 6,
-        "sigma": 6,
-        "e_target": -2.379385241571817,
+        "r_value": 5,
+        "r_superiteration": 20,
+        "sigma": 3.3,
+        "e_target": -81.30615008878445,
         "tebd_params": {
             "N_steps": 1,
             "dt": 0.1,
@@ -63,8 +63,9 @@
     "outfile": "adiabatic_rodeo_results.csv",
     "saved_mps_bool": false,
     "save_mps_bool": false,
-    "saved_mps_filename": "asdf.pkl",
-    "super_iterations": true
+    "saved_mps_filename": "asdfQUARTER.pkl",
+    "super_iterations": true,
+    "use_dmrg_etarget": true
 }
 overlap,success_probability,cost
-0.999999097424782,0.8971605937200731,45.07275540527929
+0.9999999999999518,0.9999181293468533,43.50356166500772
